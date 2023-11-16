@@ -9,13 +9,33 @@ chunk_output_type: console
 #### Block with parameters (archive version, synapse parentId and synapse folder name) for knit2Synapse
 library(synapser)
 library(knit2synapse)
+# devtools::install_github("jgockley62/knit2synapse")
 library(githubr)
+# devtools::install_github("brian-bot/githubr")
+
 synapser::synLogin()
 
-#### ARCHIVE VERSION
-ARCHIVE_VERSION <- '2023-11-10'  ## UPDATE archive version here
+######### change knit2synapse to Jake's version
 
-knit2synapse::createAndKnitToFolderEntity(file = "dashboard_fitbit_sleep_vs_otherData.Rmd",
+#### ARCHIVE VERSION
+ARCHIVE_VERSION <- '2023-08-02'  ## UPDATE archive version here
+
+#### GitHub Token
+gtToken = "<YOUR GITHUB PERSONAL TOKEN>"
+
+## New lines for calling synapseclient
+synapseclient <- reticulate::import("synapseclient")
+syn_temp <- synapseclient$Synapse()
+syn_temp$login() # is fails use syn_temp$login(authToken = <yourPAT>)
+# get your PAT at "https://www.synapse.org/#!PersonalAccessTokens:"
+
+### Note the new function being called from knit2synapse
+### Please install this version of knit2synapse
+### devtools::install_github("jgockley62/knit2synapse")
+
+### Please install v1.28 of reticulate, as this is the needed version for synapser
+### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
+knit2synapse:::createAndKnitToFolderEntityClient(file = "dashboard_fitbit_sleep_vs_otherData.Rmd",
                                           parentId = "syn52961736",
                                           folderName = ARCHIVE_VERSION)
 ```
@@ -196,16 +216,18 @@ upset(as.data.frame(aa3),
       order.by = "freq")
 ```
 
-```{r provenance, echo=FALSE, warning=FALSE, message=FALSE}
+### Code used 
+```{r get provenance, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
 ### Commenting out - doesnt work across users without 
-gtToken = "<Your GitHub Token>"
 githubr::setGithubToken(gtToken)
 thisFileName <- "dashboards/Sleep/dashboard_fitbit_sleep_vs_otherData.Rmd" # location of file inside github repo
 thisRepo <- githubr::getRepo(repository = "itismeghasyam/RECOVER-MHDR-Analysis",
                     ref="branch",
                     refName="main")
 thisFile <- githubr::getPermlink(repository = thisRepo, repositoryPath=thisFileName)
+```
 
-
-[GitHub Code](thisFile)
+```{r print provenance, echo=FALSE, results='asis'}
+http_address <- glue::glue("{thisFile}")
+cat("[GitHub Code](", http_address, ")")
 ```
