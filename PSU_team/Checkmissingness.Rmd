@@ -1,0 +1,514 @@
+---
+title: "Check Missingness"
+output: html_document
+date: "`r base::date()`"
+chunk_output_type: console
+---
+
+```{r, eval=F, include=F}
+token=as.character(read.table("token_lyl"))
+## New lines for calling synapseclient
+synapseclient <- reticulate::import("synapseclient")
+syn_temp <- synapseclient$Synapse()
+syn_temp$login(authToken=token) 
+
+
+### Note the new function being called from knit2synapse
+### Please install this version of knit2synapse
+### devtools::install_github("jgockley62/knit2synapse")
+### Please update/downgrade your reticulate package version to 1.28 if knitting fails
+### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
+library(synapser)
+library(knit2synapse)
+synapser::synLogin(authToken=token)
+knit2synapse:::createAndKnitToFolderEntityClient(file = "Checkmissingness.Rmd",
+                                          parentId = "syn52566784",
+                                          folderName = "Check_Missingness_Dashboard")
+
+```
+
+
+```{r load packages, include=F}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(synapser)
+library(arrow)
+library(knitr)
+library(tidyverse)
+library(psych)
+source("HandyMissingDataFunctions.R")
+token=as.character(read.table("token_lyl"))
+synapser::synLogin(authToken=token)
+
+ARCHIVE_VERSION <- '2023-11-10'
+archivefolder_id = 'syn52506069'  
+sts_token <- synapser::synGetStsStorageToken(entity = archivefolder_id, # sts enabled destination folder
+                                             permission = 'read_only',   # request a read only token
+                                             output_format = 'json')
+
+s3_external <- arrow::S3FileSystem$create(access_key = sts_token$accessKeyId,
+                                          secret_key = sts_token$secretAccessKey,
+                                          session_token = sts_token$sessionToken,
+                                          region="us-east-1")
+base_s3_uri_external <- paste0(sts_token$bucket, "/", sts_token$baseKey,'/',ARCHIVE_VERSION)
+parquet_datasets_external <- s3_external$GetFileInfo(arrow::FileSelector$create(base_s3_uri_external, recursive=F))
+
+## Get all valid datasets
+i <- 0
+valid_paths <- character()
+for (dataset in parquet_datasets_external) {
+  #if(!grepl('.*owner.*', dataset$path, perl = T, ignore.case = T)){
+  if (grepl('recover-main-project/main/archive/', dataset$path, perl = T, ignore.case = T)) {
+    i <- i+1
+    cat(i)
+    cat(":", dataset$path, "\n")
+    valid_paths <- c(valid_paths, dataset$path)
+  }
+}
+
+readdata = function(file_num){
+  dataset_path <- valid_paths[file_num]
+  df <- arrow::open_dataset(s3_external$path(dataset_path)) %>% 
+    dplyr::collect()
+  return(df)
+}
+
+enrolledparticipants = readdata(1)
+fitbit_activitylogs = readdata(4)
+fitbit_daily = readdata(5)
+fitbit_devices = readdata(6)
+fitbit_sleeplogs = readdata(9)
+
+```
+
+
+## Fitbit Devices
+
+Number of participants wearing Fitbit devices (based on `dataset_fitbitdailydata`):
+
+```{r}
+ID_daily = unique(fitbit_daily$ParticipantIdentifier)
+print(length(ID_daily))
+```
+
+Number of participants wearing Fitbit devices (based on `dataset_fitbitdevices`):
+
+```{r}
+ID_devices = unique(fitbit_devices$ParticipantIdentifier)
+# number of participants wearing fitbit devices
+print(length(ID_devices))
+```
+
+```{r}
+sub_enrolled=enrolledparticipants
+sub_enrolled$Sense2=rep(0,nrow(sub_enrolled))
+sub_enrolled$Charge5=rep(0,nrow(sub_enrolled))
+sub_enrolled$onlyordered=rep(0,nrow(sub_enrolled))
+numofdevices=c()
+
+for(i in 1:length(ID_devices)){
+  deviceinfo = unique(fitbit_devices[fitbit_devices$ParticipantIdentifier==ID_devices[i],"Device"]$Device)
+  numofdevices[i] = length(deviceinfo)
+  if("Sense 2" %in% deviceinfo){
+    sub_enrolled[sub_enrolled$ParticipantIdentifier==ID_devices[i],"Sense2"] = 1 
+  }
+  if("Charge 5" %in% deviceinfo){
+    sub_enrolled[sub_enrolled$ParticipantIdentifier==ID_devices[i],"Charge5"] = 1 
+  }
+  if(length(deviceinfo)-sum(deviceinfo%in%c("Sense 2", "Charge 5"))==0){
+    sub_enrolled[sub_enrolled$ParticipantIdentifier==ID_devices[i],"onlyordered"] = 1
+  }
+}
+
+```
+
+
+Number of participants only wearing only Fitbit Sense 2 and/or Charge 5:
+
+```{r}
+# IDs with ONLY Sense 2 and/or Charge 5
+ID_twodevices = sub_enrolled$ParticipantIdentifier[sub_enrolled$onlyordered==1]
+length(ID_twodevices)
+```
+
+## About COVID Infection Dates
+
+Number of participants who reported infection dates:
+
+```{r}
+as.numeric(table(is.na(enrolledparticipants$CustomFields_InfectionFirstReportedDate))[1])
+```
+
+
+Number of participants who reported infection dates and wore only Fitbit Charge 5 or Sense 2:
+
+```{r}
+as.numeric(table(!is.na(sub_enrolled$CustomFields_InfectionFirstReportedDate) & sub_enrolled$onlyordered==1)[2]) 
+```
+
+Number of participants who were infected more than once:
+
+```{r}
+as.numeric(table(enrolledparticipants$CustomFields_InfectionsReported>1)[2])
+```
+
+## Subset Data Based on New Definitions of Start/End Dates
+
+Number of participants if we define the start date as the first date with non-zero values on `HeartRateIntradayMinuteCount` after the enrollment date:
+
+```{r}
+fitbit_daily$Date2 = as.Date(fitbit_daily$Date)
+new2_fitbit_daily = NULL # use non-zero start/end date
+
+for(i in 1:length(ID_daily)){
+  enrollmentdate = as.Date(as.character(enrolledparticipants[enrolledparticipants$ParticipantIdentifier==ID_daily[i],"EnrollmentDate"]))
+  tmp_daily = fitbit_daily%>%
+    filter(ParticipantIdentifier==ID_daily[i] & Date2>=enrollmentdate)%>%
+    arrange(Date2)
+  rowindex = which(tmp_daily$HeartRateIntradayMinuteCount!=0)
+  if(length(rowindex)>0){
+    data2 = tmp_daily[rowindex[1]:rowindex[length(rowindex)],]
+  }else{
+    data2 = NULL
+  }
+  new2_fitbit_daily = rbind(new2_fitbit_daily, data2)
+}
+
+
+print(length(unique(new2_fitbit_daily$ParticipantIdentifier)))
+
+```
+
+```{r}
+# check start/end date in fitbit_daily
+timerange_daily = fitbit_daily%>%
+  group_by(ParticipantIdentifier)%>%
+  summarise(start_daily = min(Date2), end_daily = max(Date2))
+
+# check start/end date in fitbit_devices
+fitbit_devices$Date2 = as.Date(fitbit_devices$Date)
+timerange_v1 = fitbit_devices%>%
+  group_by(ParticipantIdentifier)%>%
+  summarise(start_v1 = min(Date2), end_v1 = max(Date2))
+
+# check start/end date in new fitbit daily data (start date is defined above)
+timerange_v2 = new2_fitbit_daily%>%
+  group_by(ParticipantIdentifier)%>%
+  summarise(start_v2 = min(Date2), end_v2 = max(Date2))
+
+timerange = merge(timerange_daily,timerange_v1,by="ParticipantIdentifier",all.x=TRUE)
+timerange = merge(timerange, timerange_v2, by="ParticipantIdentifier",all.x=TRUE)
+timerange = merge(timerange, enrolledparticipants[,c("ParticipantIdentifier","EnrollmentDate",
+                                                     "CustomFields_DevicesConnectedDate")], 
+                  by = "ParticipantIdentifier",all.x=TRUE)
+
+# if non-zero start date < device connected date, flag the participant as isBeforeRECOVER = 1
+timerange$isBeforeRECOVER = ifelse(timerange$start_v2 < timerange$CustomFields_DevicesConnectedDate, 1, 0)
+
+
+# check start/end date in fitbit_sleeplogs (generally match the non-zero state/end date)
+fitbit_sleeplogs$StartDate2 = as.Date(fitbit_sleeplogs$StartDate)
+timerange_sleep = fitbit_sleeplogs%>%
+  group_by(ParticipantIdentifier)%>%
+  summarise(start_sleep = min(StartDate2), end_sleep = max(StartDate2))
+timerange = merge(timerange, timerange_sleep, by="ParticipantIdentifier",all.x=TRUE)
+
+# check start/end date in fitbit_activitylogs (generally match the non-zero state/end date)
+fitbit_activitylogs$StartDate2 = as.Date(fitbit_activitylogs$StartDate)
+timerange_activity = fitbit_activitylogs%>%
+  group_by(ParticipantIdentifier)%>%
+  summarise(start_activity = min(StartDate2), end_activity = max(StartDate2))
+timerange = merge(timerange, timerange_activity, by="ParticipantIdentifier",all.x=TRUE)
+
+```
+
+## Sleep Metrics
+
+```{r}
+# Sleeplogs: "Duration", "Efficiency", "TimeInBed", "Type" (classic or stages)
+ID_sleep = unique(fitbit_sleeplogs$ParticipantIdentifier)
+#table(ID_sleep%in%ID_twodevices) 
+
+# select the maximum sleep duration within a day for a participant
+fitbit_sleeplogs$Date2 = as.Date(fitbit_sleeplogs$EndDate)
+dat_sleep_all = fitbit_sleeplogs%>%
+  group_by(ParticipantIdentifier, Date2)%>%
+  filter(Duration == max(as.numeric(Duration)))%>%
+  rename("Duration_Sleeplogs" = "Duration",
+         "Efficiency_Sleeplogs" = "Efficiency",
+         "TimeInBed_Sleeplogs" = "TimeInBed")
+dat_sleep_classic = fitbit_sleeplogs%>%
+  filter(Type == "classic")%>%
+  group_by(ParticipantIdentifier, Date2)%>%
+  filter(Duration == max(as.numeric(Duration)))%>%
+  rename("Duration_Sleeplogs_Classic" = "Duration",
+         "Efficiency_Sleeplogs_Classic" = "Efficiency",
+         "TimeInBed_Sleeplogs_Classic" = "TimeInBed")
+dat_sleep_stages = fitbit_sleeplogs%>%
+  filter(Type == "stages")%>%
+  group_by(ParticipantIdentifier, Date2)%>%
+  filter(Duration == max(as.numeric(Duration)))%>%
+  rename("Duration_Sleeplogs_Stages" = "Duration",
+         "Efficiency_Sleeplogs_Stages" = "Efficiency",
+         "TimeInBed_Sleeplogs_Stages" = "TimeInBed")
+
+
+```
+
+
+## Activity Metrics
+
+```{r}
+# Activitylogs: "SedentaryMinutes", "LightlyMinutes", "FairlyMinutes", "VeryMinutes", "Steps"
+# fitbitdaily: Tracker_MinutesSedentary, Tracker_MinutesLightlyActive, Tracker_MinutesFairlyActive, Tracker_MinutesVeryActive, Tracker_Steps
+ID_activity = unique(fitbit_activitylogs$ParticipantIdentifier)
+#table(ID_activity%in%ID_twodevices) 
+#table(ID_activity%in%ID_sleep)
+
+# select the total activity duration within a day for a participant
+fitbit_activitylogs$Date2 = as.Date(fitbit_activitylogs$EndDate)
+dat_activity = fitbit_activitylogs%>%
+  group_by(ParticipantIdentifier, Date2)%>%
+  summarise(Duration_Activitylogs = sum(as.numeric(Duration)),
+            SedentaryMinutes_Activitylogs = sum(as.numeric(SedentaryMinutes)),
+            LightlyMinutes_Activitylogs = sum(as.numeric(LightlyMinutes)),
+            FairlyMinutes_Activitylogs = sum(as.numeric(FairlyMinutes)),
+            VeryMinutes_Activitylogs = sum(as.numeric(VeryMinutes)),
+            Steps_Activitylogs = sum(as.numeric(Steps))  )
+
+```
+
+## Histograms of Key Fitbit Measures
+
+Plots are generated based on data with non-zero start dates.
+
+```{r}
+par(mfrow=c(3,2))
+
+# check the distribution of HeartRateIntradayMinuteCount to get a sense of nonwearing time
+#describe(as.numeric(new2_fitbit_daily$HeartRateIntradayMinuteCount))
+hist(as.numeric(new2_fitbit_daily$HeartRateIntradayMinuteCount), main = "Histogram of HeartRateIntrdayMinuteCount", xlab="HeartRateIntrdayMinuteCount")
+
+#describe(as.numeric(new2_fitbit_daily$RestingHeartRate))
+hist(as.numeric(new2_fitbit_daily$RestingHeartRate), main = "Histogram of RestingHeartRate", xlab="RestingHeartRate")
+
+#describe(as.numeric(new2_fitbit_daily$Steps))
+hist(as.numeric(new2_fitbit_daily$Steps), main = "Histogram of Steps", xlab="Steps")
+
+#describe(as.numeric(new2_fitbit_daily$SpO2_Avg))
+hist(as.numeric(new2_fitbit_daily$SpO2_Avg), main = "Histogram of SpO2_Avg", xlab="SpO2_Avg")
+
+#describe(as.numeric(new2_fitbit_daily$Hrv_DailyRmssd))
+hist(as.numeric(new2_fitbit_daily$Hrv_DailyRmssd), main = "Histogram of Hrv_DailyRmssd", xlab="Hrv_DailyRmssd")
+```
+
+
+## Missing Data Metrics
+
+
+### Overall Missingness in Fitbit Measures
+
+
+#### Based on Participants Wearing Only Sense 2/Charge 5
+
+
+```{r}
+alldata  = merge(new2_fitbit_daily, dat_activity, by=c("ParticipantIdentifier","Date2"), all.x=TRUE)
+alldata = merge(alldata, dat_sleep_all, by=c("ParticipantIdentifier","Date2"), all.x=TRUE)
+alldata = merge(alldata, dat_sleep_classic[,c("ParticipantIdentifier","Date2","Duration_Sleeplogs_Classic", "Efficiency_Sleeplogs_Classic", "TimeInBed_Sleeplogs_Classic")], by=c("ParticipantIdentifier","Date2"), all.x=TRUE)
+alldata = merge(alldata, dat_sleep_stages[,c("ParticipantIdentifier","Date2","Duration_Sleeplogs_Stages", "Efficiency_Sleeplogs_Stages", "TimeInBed_Sleeplogs_Stages")], by=c("ParticipantIdentifier","Date2"), all.x=TRUE)
+
+
+#measures = c("ParticipantIdentifier","BodyBmi","BodyFat","BodyWeight","BreathingRate","Calories","CaloriesBMR","Distance","FoodCaloriesIn","HeartRateIntradayMinuteCount","Hrv_DailyRmssd","Hrv_DeepRmssd","MinutesFairlyActive","MinutesLightlyActive","MinutesSedentary","MinutesVeryActive","RestingHeartRate","SpO2_Avg","SpO2_Max","SpO2_Min","Steps","Elevation","Floors","Tracker_ActivityCalories","Tracker_Calories","Tracker_Distance","Tracker_Elevation","Tracker_Floors","Tracker_MinutesFairlyActive","Tracker_MinutesLightlyActive","Tracker_MinutesSedentary","Tracker_MinutesVeryActive","Tracker_Steps","Duration_Sleeplogs", "Efficiency_Sleeplogs", "TimeInBed_Sleeplogs","Duration_Sleeplogs_Classic", "Efficiency_Sleeplogs_Classic", "TimeInBed_Sleeplogs_Classic","Duration_Sleeplogs_Stages", "Efficiency_Sleeplogs_Stages", "TimeInBed_Sleeplogs_Stages","Duration_Activitylogs","SedentaryMinutes_Activitylogs", "LightlyMinutes_Activitylogs", "FairlyMinutes_Activitylogs", "VeryMinutes_Activitylogs", "Steps_Activitylogs")
+
+measures = rev(c("Duration_Sleeplogs", "Efficiency_Sleeplogs", "TimeInBed_Sleeplogs",
+             "Duration_Sleeplogs_Stages", "Efficiency_Sleeplogs_Stages", "TimeInBed_Sleeplogs_Stages",
+             "Duration_Sleeplogs_Classic", "Efficiency_Sleeplogs_Classic", "TimeInBed_Sleeplogs_Classic",
+             "HeartRateIntradayMinuteCount","Tracker_Steps",
+             "Tracker_MinutesVeryActive","Tracker_MinutesFairlyActive",
+             "Tracker_MinutesLightlyActive","Tracker_MinutesSedentary",
+             "RestingHeartRate","BreathingRate",
+             "Hrv_DailyRmssd","SpO2_Avg","ParticipantIdentifier"))
+
+alldata = alldata[,measures]
+alldata[,-1] = lapply(alldata[,-1], as.numeric)
+
+data_twodevices = alldata[alldata$ParticipantIdentifier%in%ID_twodevices,]
+print("Number of participants who have non-zero HR logs and wear only Sense 2/Charge 5:")
+print(length(unique(data_twodevices$ParticipantIdentifier)))
+#check_missing_rate(data_twodevices[,-1])
+plot_missing_rate(data_twodevices[,-1])
+```
+
+
+#### Based on Participants with Sleep Logs and Sense 2/Charge 5
+
+Only considering default `NA`s from Fitbit:
+
+```{r}
+data_sleep_twodevices =  alldata[alldata$ParticipantIdentifier%in%intersect(ID_sleep, ID_twodevices),]
+print("Number of participants who have non-zero HR logs and sleep logs and wear only Sense 2/Charge 5:")
+print(length(unique(data_sleep_twodevices$ParticipantIdentifier)))
+#check_missing_rate(data_sleep_twodevices[,-1])
+plot_missing_rate(data_sleep_twodevices[,-1])
+```
+
+
+Updated plot when missingness includes default `NA`s, 0 tracker step counts only:
+
+```{r}
+data2 = data_sleep_twodevices
+data2[!is.na(data2$Tracker_Steps)&data2$Tracker_Steps==0,-1] = NA  
+#check_missing_rate(data2[,-1])
+plot_missing_rate(data2[,-1])
+```
+
+Updated plot when missingness includes default `NA`s, 0 HeartRateIntradayMinuteCount only:
+
+```{r}
+data3 = data_sleep_twodevices
+data3[!is.na(data3$HeartRateIntradayMinuteCount)&data3$HeartRateIntradayMinuteCount==0,-1] = NA   
+#check_missing_rate(data3[,-1])
+plot_missing_rate(data3[,-1])
+```
+
+Updated plot when missingness includes default `NA`s, 0 tracker step counts, or 0 HeartRateIntradayMinuteCount:
+
+```{r}
+data4 = data_sleep_twodevices
+data4[(!is.na(data4$Tracker_Steps)&data4$Tracker_Steps==0)|(!is.na(data4$HeartRateIntradayMinuteCount)&data4$HeartRateIntradayMinuteCount==0),-1] = NA    
+#check_missing_rate(data4[,-1])
+plot_missing_rate(data4[,-1])
+```
+
+Updated plot when missingness includes default `NA`s, 0 tracker step counts, or HeartRateIntradayMinuteCount < 600 minutes:
+
+```{r}
+data5 = data_sleep_twodevices
+data5[(!is.na(data5$Tracker_Steps)&data5$Tracker_Steps==0)|(!is.na(data4$HeartRateIntradayMinuteCount)&data4$HeartRateIntradayMinuteCount<600),-1] = NA   
+#check_missing_rate(data5[,-1])
+plot_missing_rate(data5[,-1])
+```
+
+Distributions of `HeartRateIntradayMinuteCount` conditional on sleep stages and the presence of `RestingHeartRate`/`Hrv_DailyRmssd`/`SpO2_Avg` logs : 
+
+```{r}
+plothr = function(df, variable){
+  print(describe(df$HeartRateIntradayMinuteCount[!is.na(df[,variable])]))
+  hist(df$HeartRateIntradayMinuteCount[!is.na(df[,variable])], 
+       xlab="HeartRateIntradayMinuteCount", main=paste("When", variable, "are present"))
+  print(describe(df$HeartRateIntradayMinuteCount[is.na(df[,variable])]))
+  hist(df$HeartRateIntradayMinuteCount[is.na(df[,variable])], 
+       xlab="HeartRateIntradayMinuteCount", main=paste("When", variable, "are missing"))
+}
+plothr(data_sleep_twodevices, "Duration_Sleeplogs_Stages")
+plothr(data_sleep_twodevices, "RestingHeartRate")
+plothr(data_sleep_twodevices, "Hrv_DailyRmssd")
+plothr(data_sleep_twodevices, "SpO2_Avg")
+
+```
+
+
+
+### Missingness Rates Across Participants
+
+The idea is to check the proportion of days a participant has invalid data for key Fitbit metrics (e.g., heart rate, step, SpO2, HRV). Here, invalid data are defined by zero values and `NA`s as returned by Fitbit devices.
+
+For those with unusually high proportion of invalid data (e.g., > 50%), we provide a list of participant IDs and number of devices they wore during the study.
+
+Open questions: 
+- Is 50% a reasonable threshold? 
+
+```{r}
+check_invalid_IDs = function(data, variable){
+  data = data[, c("ParticipantIdentifier",variable)]
+  colnames(data)[2] = "VariableofInterest"
+  missdays = data %>%
+    group_by(ParticipantIdentifier)%>%
+    summarise_at(vars(VariableofInterest), ~sum(. != 0, na.rm=T))
+  colnames(missdays)[2] = "nonmiss_days"
+  totaldays = data %>%
+    group_by(ParticipantIdentifier)%>%
+    summarise(total_days = n())
+  alldata = merge(missdays, totaldays, by="ParticipantIdentifier")
+  alldata = alldata %>%
+    mutate(miss_days = total_days - nonmiss_days)%>%
+    mutate(Prop = round(miss_days/total_days,2))
+  hist(alldata$Prop, xlab="Proportions of Missingness Across Participants",main=variable)
+
+  invalid = alldata[alldata$Prop>0.5,]
+  invalidIDs = unique(invalid$ParticipantIdentifier)
+  invalid$Num_devices = rep(0, nrow(invalid))
+  for(i in 1:length(invalidIDs)){
+    deviceinfo = unique(fitbit_devices[fitbit_devices$ParticipantIdentifier==invalidIDs[i],"Device"]$Device)
+    invalid$Num_devices[i] = length(deviceinfo)
+  }
+  #head(invalid[order(-invalid$Prop),])
+}
+
+
+```
+
+
+#### Based on Participants Wearing Only Sense 2/Charge 5
+
+```{r}
+par(mfrow=c(2,2))
+check_invalid_IDs(data_twodevices, "HeartRateIntradayMinuteCount")
+check_invalid_IDs(data_twodevices, "RestingHeartRate")
+check_invalid_IDs(data_twodevices, "Tracker_Steps")
+check_invalid_IDs(data_twodevices, "SpO2_Avg")
+check_invalid_IDs(data_twodevices, "Duration_Sleeplogs")
+check_invalid_IDs(data_twodevices, "Duration_Sleeplogs_Classic")
+check_invalid_IDs(data_twodevices, "Duration_Sleeplogs_Stages")
+```
+
+
+#### Based on Participants with Sleep Logs and Sense 2/Charge 5
+
+```{r}
+par(mfrow=c(2,2))
+check_invalid_IDs(data_sleep_twodevices, "HeartRateIntradayMinuteCount")
+check_invalid_IDs(data_sleep_twodevices, "RestingHeartRate")
+check_invalid_IDs(data_sleep_twodevices, "Tracker_Steps")
+check_invalid_IDs(data_sleep_twodevices, "SpO2_Avg")
+check_invalid_IDs(data_sleep_twodevices, "Duration_Sleeplogs")
+check_invalid_IDs(data_sleep_twodevices, "Duration_Sleeplogs_Classic")
+check_invalid_IDs(data_sleep_twodevices, "Duration_Sleeplogs_Stages")
+```
+
+
+
+```{r,eval=FALSE}
+pid = "RA11101-00364" #RA11101-00184
+p_intraday = arrow::open_dataset(s3_external$path(valid_paths[7])) %>% 
+    dplyr::filter(ParticipantIdentifier==pid) %>% 
+    dplyr::collect()
+unique(p_intraday$Type)
+p_intraday_hr = p_intraday[p_intraday$Type=="activities-heart",c("ParticipantIdentifier","DateTime","Type","Value")]
+p_intraday_steps = p_intraday[p_intraday$Type=="activities-steps",c("ParticipantIdentifier","DateTime","Type","Value")]
+
+pid = "RA11003-00007"
+p_sleep = fitbit_sleeplogs[fitbit_sleeplogs$ParticipantIdentifier==pid,]
+p_activity = fitbit_activitylogs[fitbit_activitylogs$ParticipantIdentifier==pid,c("ParticipantIdentifier","StartDate","EndDate","Date2","SedentaryMinutes", "LightlyMinutes", "FairlyMinutes", "VeryMinutes", "Steps")]
+p_daily = new2_fitbit_daily[new2_fitbit_daily$ParticipantIdentifier==pid,c("ParticipantIdentifier","Date","HeartRateIntradayMinuteCount","Tracker_MinutesFairlyActive","Tracker_MinutesLightlyActive","Tracker_MinutesSedentary","Tracker_MinutesVeryActive","Tracker_Steps","SedentaryMinutes_Activitylogs", "LightlyMinutes_Activitylogs", "FairlyMinutes_Activitylogs", "VeryMinutes_Activitylogs", "Steps_Activitylogs")]
+
+```
+
+  
+
+<!-- ### Differences between `Tracker_Steps` and `Steps` -->
+
+<!-- - `Tracker_Steps`: Steps taken; only includes tracker sources, not manually-entered data. -->
+<!-- - `Steps`: Steps taken. -->
+
+<!-- Rows where `Steps` < `Tracker_Steps`: -->
+
+```{r, eval=FALSE}
+fitbit_steps = fitbit_daily[,c("ParticipantIdentifier","Date","Steps","Tracker_Steps")]
+fitbit_steps$Steps =  as.numeric(fitbit_steps$Steps)
+fitbit_steps$Tracker_Steps =  as.numeric(fitbit_steps$Tracker_Steps)
+fitbit_steps$diff = fitbit_steps$Steps - fitbit_steps$Tracker_Steps
+#nrow(fitbit_steps[fitbit_steps$diff>0&!is.na(fitbit_steps$diff),])
+df_to_print = fitbit_steps[fitbit_steps$diff<0&!is.na(fitbit_steps$diff),]
+arrange(df_to_print, ParticipantIdentifier, Date)
+```
