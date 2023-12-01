@@ -494,17 +494,15 @@ write.csv(curr_state, './rendered_dfs/parquet-metrics/current_state_of_data.csv'
 ```
 
 ### Code used 
-```{r get provenance, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
-### Commenting out - doesnt work across users without 
-githubr::setGithubToken(gtToken)
-thisFileName <- "dashboards/Sleep/dashboard_fitbit_sleep_vs_otherData.Rmd" # location of file inside github repo
-thisRepo <- githubr::getRepo(repository = "itismeghasyam/RECOVER-MHDR-Analysis",
-                    ref="branch",
-                    refName="main")
-thisFile <- githubr::getPermlink(repository = thisRepo, repositoryPath=thisFileName)
-```
+```{r provenance, echo=FALSE, results='asis'}
+this_file_path <- "dashboards/participants-and-devices/participants-and-devices.qmd"
 
-```{r print provenance, echo=FALSE, results='asis'}
-http_address <- glue::glue("{thisFile}")
-cat("[GitHub Code](", http_address, ")")
+latest_file_commit <- 
+  gh::gh("/repos/:owner/:repo/commits", 
+         owner = "pranavanba", 
+         repo = "RECOVER-MHDR-Analysis", 
+         path = this_file_path)[[1]]$commit$url %>% 
+  {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+
+cat("[GitHub Code](", latest_file_commit, ")")
 ```
