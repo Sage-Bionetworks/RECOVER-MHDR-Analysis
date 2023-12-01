@@ -2,3 +2,6 @@ core.2812
 core.*
 Duke_team/core.*
 *Rproj*
+.Rproj.user
+parquet/
+*cache*
