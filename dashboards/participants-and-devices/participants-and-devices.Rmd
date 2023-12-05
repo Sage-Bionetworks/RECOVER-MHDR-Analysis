@@ -1,0 +1,476 @@
+---
+title: "Participants and Devices Insights"
+author: "Pranav Anbarasu"
+date: "`r base::date()`"
+output:
+  html_document:
+    embed-resources: true
+    toc: true
+    toc_float:
+      smooth-scroll: true
+---
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
+knitr::opts_knit$set(echo = FALSE)
+```
+
+```{r, include=FALSE, warning=FALSE, message=FALSE}
+
+library(lubridate)
+library(stringr)
+library(dplyr)
+library(arrow)
+library(tidyr)
+library(synapser)
+library(knit2synapse)
+
+synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
+
+ARCHIVE_VERSION <- "2023-08-02"
+```
+
+Using data from external parquet archive version: `r ARCHIVE_VERSION`
+
+```{r knit into synapse, eval=FALSE, include=FALSE}
+synapseclient <- reticulate::import("synapseclient")
+syn_temp <- synapseclient$Synapse()
+syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
+
+
+### Please install v1.28 of reticulate, as this is the needed version for synapser
+### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
+knit2synapse:::createAndKnitToFolderEntityClient(
+  file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
+  parentId = "syn53067691",
+  folderName = ARCHIVE_VERSION)
+```
+
+
+```{r, include=FALSE, message=FALSE, warning=FALSE}
+
+# synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
+# 
+# token <- synapser::synGetStsStorageToken(
+#   entity = 'syn52506069',
+#   permission = "read_only",
+#   output_format = "json")
+# 
+# PARQUET_BUCKET <- 'recover-main-project'
+# PARQUET_BUCKET_BASE_KEY <- paste0('main/archive/', ARCHIVE_VERSION, '/')
+# 
+# if (PARQUET_BUCKET==token$bucket && PARQUET_BUCKET_BASE_KEY==token$baseKey) {
+#   base_s3_uri <- paste0('s3://', token$bucket, '/', token$baseKey)
+# } else {
+#   base_s3_uri <- paste0('s3://', PARQUET_BUCKET, '/', PARQUET_BUCKET_BASE_KEY)
+# }
+# 
+# # configure the environment with AWS token
+# Sys.setenv('AWS_ACCESS_KEY_ID'=token$accessKeyId,
+#            'AWS_SECRET_ACCESS_KEY'=token$secretAccessKey,
+#            'AWS_SESSION_TOKEN'=token$sessionToken)
+# 
+# AWS_PARQUET_DOWNLOAD_LOCATION <- '~/RECOVER-MHDR-Analysis/parquet/'
+# unlink(AWS_PARQUET_DOWNLOAD_LOCATION, recursive = T, force = T)
+# sync_cmd <- glue::glue('aws s3 sync {base_s3_uri} {AWS_PARQUET_DOWNLOAD_LOCATION}{ARCHIVE_VERSION}/ --exclude "*owner.txt*" --exclude "*archive*"')
+# system(sync_cmd)
+```
+
+
+```{r, include=FALSE}
+
+enrolled <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants/')) %>% collect()
+enrolled_symptoms <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants_customfields_symptoms/')) %>% collect()
+enrolled_treatments <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants_customfields_treatments/')) %>% collect()
+fitbit_actlogs <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitactivitylogs/')) %>% collect()
+fitbit_dailydata <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitdailydata/')) %>% collect()
+fitbit_devices <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitdevices/')) %>% collect()
+fitbit_intracomb <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitintradaycombined/')) %>% 
+  select(ParticipantIdentifier) %>% 
+  distinct() %>% 
+  collect()
+fitbit_rhr <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitrestingheartrates/')) %>% collect()
+fitbit_sleeplogs <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitsleeplogs/')) %>% collect()
+fitbit_sleeplogdetail <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitsleeplogs_sleeplogdetails/')) %>% collect()
+googlefit <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_googlefitsamples/')) %>% collect()
+hk_activitysummaries <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2activitysummaries/')) %>% collect()
+hk_ecg <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2electrocardiogram/')) %>% collect()
+hk_ecg_subsamples <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2electrocardiogram_subsamples/')) %>% collect()
+hk_heartbeat <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2heartbeat/')) %>% collect()
+hk_heartbeat_subsamples <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2heartbeat_subsamples/')) %>% collect()
+hk_samples <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2samples/')) %>% 
+  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+  collect()
+hk_stats <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2statistics/')) %>% collect()
+hk_workouts <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2workouts/')) %>% collect()
+hk_workouts_events <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2workouts_events/')) %>% collect()
+symptomlog <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_symptomlog/')) %>% collect()
+symptomlog_symptoms <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_symptomlog_value_symptoms/')) %>% collect()
+symptomlog_treatments <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_symptomlog_value_treatments//')) %>% collect()
+```
+
+
+```{r, include=FALSE}
+
+all_participants_by_dataset <- tibble(dataset = character(), ParticipantIdentifier = character())
+all_participants_by_dataset <- 
+  bind_rows(
+    all_participants_by_dataset, 
+    (enrolled %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'enrolledparticipants')),
+    (enrolled_symptoms %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'enrolledparticipants')),
+    (enrolled_treatments %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'enrolledparticipants')),
+    (fitbit_actlogs %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'fitbit')),
+    (fitbit_dailydata %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'fitbit')),
+    (fitbit_devices %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'fitbit')),
+    (fitbit_intracomb %>%
+       select(ParticipantIdentifier) %>% 
+       distinct() %>% 
+       mutate(dataset = 'fitbit')),
+    (fitbit_rhr %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'fitbit')),
+    (fitbit_sleeplogs %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'fitbit')),
+    (googlefit %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'googlefit')),
+    (hk_activitysummaries %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'healthkit')),
+    (hk_ecg %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'healthkit')),
+    (hk_heartbeat %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'healthkit')),
+    (hk_samples %>%
+       select(ParticipantIdentifier) %>% 
+       distinct() %>% 
+       mutate(dataset = 'healthkit')),
+    (hk_stats %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'healthkit')),
+    (hk_workouts %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'healthkit')),
+    (symptomlog %>% 
+      select(ParticipantIdentifier) %>% 
+      mutate(dataset = 'symptomlog'))) %>% 
+  group_by(dataset, ParticipantIdentifier) %>% 
+  distinct() %>% 
+  ungroup()
+```
+
+
+```{r, include=FALSE, cache.lazy=FALSE}
+
+# Unique HealthKit Devices ------------------------------------------------
+hk_devices <- bind_rows(
+  (hk_ecg %>% 
+     select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+     mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+  (hk_heartbeat %>% 
+     select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+     mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+  (hk_samples %>%
+     select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>%
+     mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+  (hk_workouts %>% 
+     select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+     mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+     group_by(Device_Model, Device_HardwareVersion, Source_Identifier))
+)
+```
+
+
+```{r, include=FALSE}
+
+# Devices per Participant -------------------------------------------------
+devices_per_pid_fitbit <- 
+  fitbit_devices %>% 
+  select(ParticipantIdentifier, Device, Type) %>% 
+  group_by(ParticipantIdentifier) %>%
+  summarise(n_devices_per_participant = n_distinct(Device)) %>% 
+  group_by(n_devices_per_participant) %>% 
+  count() %>% 
+  ungroup() %>% 
+  rename(n_participants = n) %>% 
+  mutate(dataset = 'fitbit')
+
+devices_per_pid_googlefit <- 
+  googlefit %>% 
+  select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
+  rename(DeviceModel=OriginalDataSourceDeviceModel,
+         DeviceType=OriginalDataSourceDeviceType) %>% 
+  group_by(ParticipantIdentifier) %>% 
+  summarise(n_devices_per_participant = n_distinct(DeviceModel)) %>% 
+  group_by(n_devices_per_participant) %>% 
+  count() %>% 
+  ungroup() %>% 
+  rename(n_participants = n) %>% 
+  mutate(dataset = 'googlefit')
+
+devices_per_pid_hk <- 
+  hk_devices %>% 
+  select(ParticipantIdentifier, Device_HardwareVersion) %>% 
+  group_by(ParticipantIdentifier) %>% 
+  summarise(n_devices_per_participant = n_distinct(Device_HardwareVersion)) %>% 
+  group_by(n_devices_per_participant) %>% 
+  count() %>% 
+  ungroup() %>% 
+  rename(n_participants = n) %>% 
+  mutate(dataset = 'healthkit')
+```
+
+
+```{r, include=FALSE}
+
+# Number of Participants Without Device Data Found in Non-Device Files ----
+mismatch_pids_fitbit <- 
+  (all_participants_by_dataset %>% 
+     filter(dataset=='fitbit') %>% 
+     pull(ParticipantIdentifier) %>% 
+     unique() %>% 
+     sort()
+   )[which(!((all_participants_by_dataset %>% filter(dataset=='fitbit') %>% 
+                pull(ParticipantIdentifier) %>% 
+                unique() %>% 
+                sort()
+              ) %in% (fitbit_devices$ParticipantIdentifier %>% 
+                        unique() %>% 
+                        sort())
+             )
+           )
+     ]
+
+```
+
+## Count of Unique Participants {.tabset}
+
+### By Cohort
+
+```{r, echo=FALSE}
+pq_pids_by_cohort <- 
+  all_participants_by_dataset %>%
+  group_by(cohort = case_when(
+    startsWith(ParticipantIdentifier, "RA") ~ "Adult",
+    startsWith(ParticipantIdentifier, "RP") ~ "Pediatric",
+    TRUE ~ "Other"
+  )) %>%
+  summarise(n_participants = n_distinct(ParticipantIdentifier))
+pq_pids_by_cohort %>% rmarkdown::paged_table()
+write.csv(pq_pids_by_cohort, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_cohort.csv')
+```
+
+### Per Dataset
+
+```{r, echo=FALSE}
+pq_pids_by_dataset <- 
+  all_participants_by_dataset %>% 
+  group_by(dataset) %>% 
+  summarise(n_participants = n_distinct(ParticipantIdentifier))
+pq_pids_by_dataset <- pq_pids_by_dataset[match(c("fitbit", "healthkit", "googlefit", "symptomlog", "enrolledparticipants"), pq_pids_by_dataset$dataset), ]
+pq_pids_by_dataset %>% rmarkdown::paged_table()
+write.csv(pq_pids_by_dataset, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_dataset.csv')
+```
+
+### Contributing to Multiple Datasets
+```{r, echo=FALSE}
+pq_pids_multiple_datasets <- 
+  all_participants_by_dataset %>% 
+  group_by(ParticipantIdentifier) %>%
+  summarise(n_datasets_contributing_to = n_distinct(dataset)) %>%
+  group_by(n_datasets_contributing_to) %>%
+  summarise(n_participants = n())
+pq_pids_multiple_datasets %>% rmarkdown::paged_table()
+write.csv(pq_pids_multiple_datasets, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_multiple_datasets.csv')
+```
+
+
+## Count of Records
+
+A record is a single row in a parquet dataset (after removal of duplicate data)
+
+```{r, echo=FALSE}
+pq_n_records <- tibble()
+for (dir in list.dirs(paste0('./parquet/', ARCHIVE_VERSION, '/'), recursive = F)) {
+  rows <- open_dataset(dir) %>% nrow()
+  name <- basename(dir)
+  current <- tibble(dataset = name, n_records = rows)
+  pq_n_records <- bind_rows(pq_n_records, current)
+}
+```
+
+```{r, echo=FALSE}
+pq_n_records %>% arrange(desc(n_records)) %>% rmarkdown::paged_table()
+write.csv((pq_n_records %>% arrange(desc(n_records))), './dashboards/participants-and-devices/rendered-dfs/parquet_records_per_dataset.csv')
+```
+
+<!-- ### Average number of days of data per participant -->
+
+```{r}
+
+```
+
+## Device Metrics
+
+### Unique Devices {.tabset}
+
+#### Fitbit
+
+```{r, echo=FALSE}
+pq_pids_by_fitbit_devices <- 
+  fitbit_devices %>% 
+  select(ParticipantIdentifier, Device, Type) %>% 
+  group_by(Device, Type) %>% 
+  summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
+  arrange(desc(n_participants))
+pq_pids_by_fitbit_devices %>% rmarkdown::paged_table()
+write.csv(pq_pids_by_fitbit_devices, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_fitbit_devices.csv')
+```
+
+#### Google Fit
+
+```{r, echo=FALSE}
+pq_pids_by_googlefit <- 
+  googlefit %>% 
+  select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
+  group_by(OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
+  summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
+  arrange(desc(n_participants)) %>% 
+  rename(DeviceModel=OriginalDataSourceDeviceModel,
+         DeviceType=OriginalDataSourceDeviceType)
+pq_pids_by_googlefit %>% rmarkdown::paged_table()
+write.csv(pq_pids_by_googlefit, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_googlefit.csv')
+```
+
+#### HealthKit
+
+```{r, include=FALSE, echo=FALSE}
+pq_large_pids_by_hk <- 
+  hk_devices %>% 
+  group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
+  summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
+  arrange(desc(n_participants)) %>% 
+  ungroup()
+# pq_large_pids_by_hk %>% rmarkdown::paged_table()
+write.csv(pq_large_pids_by_hk, './dashboards/participants-and-devices/rendered-dfs/parquet_large_pids_by_hk.csv')
+```
+
+```{r, echo=FALSE}
+pq_filtered_pids_by_hk <- 
+  hk_devices %>%
+  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier) %>%
+  mutate(Source_Identifier = str_to_lower(Source_Identifier)) %>%
+  mutate(Source = ifelse(
+    !is.na(Device_HardwareVersion) &
+      grepl("Watch|iPhone", Device_HardwareVersion, ignore.case = TRUE),
+    Device_HardwareVersion,
+    ifelse(
+      !is.na(Device_Model) &
+        grepl("withings|garmin|oura", Device_Model, ignore.case = TRUE),
+      Device_Model,
+      Source_Identifier
+    )
+  )) %>%
+  group_by(Source) %>%
+  summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>%
+  arrange(desc(n_participants)) %>% 
+  ungroup()
+pq_filtered_pids_by_hk %>% rmarkdown::paged_table()
+write.csv(pq_filtered_pids_by_hk, './dashboards/participants-and-devices/rendered-dfs/parquet_filtered_pids_by_hk.csv')
+```
+
+
+### Devices per Participant
+
+```{r, echo=FALSE}
+pq_n_devices_per_participant <- 
+  bind_rows(devices_per_pid_fitbit, 
+          devices_per_pid_googlefit, 
+          devices_per_pid_hk) %>% 
+  group_by(dataset) %>% 
+  arrange(n_devices_per_participant, .by_group = T) %>% 
+  select(dataset, everything())
+pq_n_devices_per_participant %>% rmarkdown::paged_table()
+write.csv(pq_n_devices_per_participant, './dashboards/participants-and-devices/rendered-dfs/parquet_n_devices_per_participant.csv')
+```
+
+### Number of Participants Without Device Data Found in Non-Device Files {.tabset}
+
+E.g. N participant IDs were found in the 'fitbit_activitylogs' dataset but not in the 'fitbit_devices' dataset, meaning that device data was missing for those N participants' data in the 'fitbit_activitylogs' dataset. I.e., data for N participants in dataset X are missing associated device data.
+
+#### Fitbit
+
+```{r, echo=FALSE}
+pq_device_pids_mismatch_fitbit <- 
+  data.frame(
+    dataset = c("activitylogs", "dailydata", "intradaycombined", "restingheartrate", "sleeplogs"),
+    n_participants = c(
+      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_actlogs$ParticipantIdentifier %>% unique() %>% sort()))]),
+      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_dailydata$ParticipantIdentifier %>% unique() %>% sort()))]),
+      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_intracomb$ParticipantIdentifier %>% unique() %>% sort()))]),
+      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_rhr$ParticipantIdentifier %>% unique() %>% sort()))]),
+      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_sleeplogs$ParticipantIdentifier %>% unique() %>% sort()))])
+    )
+  )
+pq_device_pids_mismatch_fitbit %>% rmarkdown::paged_table()
+write.csv(pq_device_pids_mismatch_fitbit, './dashboards/participants-and-devices/rendered-dfs/parquet_device_pids_mismatch_fitbit.csv')
+```
+
+
+## Current State of Data
+
+```{r, echo=FALSE}
+row_vals <- c("Participants", "Watch/Tracker", "TotalRecords")
+col_vals <- c("Fitbit", "HealthKit", "GoogleFit", "Symptoms", "Total")
+
+curr_state <- matrix(data = NA, nrow = length(row_vals), ncol = length(col_vals))
+rownames(curr_state) <- row_vals
+colnames(curr_state) <- col_vals
+
+curr_state[1,] <- pq_pids_by_dataset$n_participants
+
+curr_state[2, 1] <- pq_pids_by_fitbit_devices$n_participants[which(pq_pids_by_fitbit_devices$Type=="TRACKER"&pq_pids_by_fitbit_devices$Device!="MobileTrack")] %>% sum()
+curr_state[2, 2] <- pq_filtered_pids_by_hk$n_participants[which(grepl("Watch*", pq_filtered_pids_by_hk$Source))] %>% sum()
+curr_state[2, 3] <- pq_pids_by_googlefit$n_participants[which(pq_pids_by_googlefit$DeviceType=="WATCH")] %>% sum()
+curr_state[2, 4] <- NA
+curr_state[2, 5] <- curr_state[2, 1] + curr_state[2, 2] + curr_state[2, 3]
+
+curr_state[3, 1] <- pq_n_records$n_records[which(grepl("dataset_fitbit*", pq_n_records$dataset))] %>% sum()
+curr_state[3, 2] <- pq_n_records$n_records[which(grepl("dataset_healthkitv2*", pq_n_records$dataset))] %>% sum()
+curr_state[3, 3] <- pq_n_records$n_records[which(grepl("dataset_google*", pq_n_records$dataset))] %>% sum()
+curr_state[3, 4] <- pq_n_records$n_records[which(grepl("dataset_symptomlog*", pq_n_records$dataset))] %>% sum()
+curr_state[3, 5] <- curr_state[3, 1] + curr_state[3, 2] + curr_state[3, 3] + curr_state[3, 4]
+
+curr_state <- curr_state %>% as.data.frame()
+curr_state %>% rmarkdown::paged_table()
+write.csv(curr_state, './dashboards/participants-and-devices/rendered-dfs/current_state_of_data.csv')
+```
+
+## Code used 
+```{r provenance, echo=FALSE, results='asis'}
+this_file_path <- "dashboards/participants-and-devices/participants-and-devices.qmd"
+
+latest_file_commit <- 
+  gh::gh("/repos/:owner/:repo/commits", 
+         owner = "pranavanba", 
+         repo = "RECOVER-MHDR-Analysis", 
+         path = this_file_path)[[1]]$commit$url %>% 
+  {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+
+cat("[GitHub Code](", latest_file_commit, ")")
+```
