@@ -463,7 +463,7 @@ write.csv(curr_state, './dashboards/participants-and-devices/rendered-dfs/curren
 
 ## Code used 
 ```{r provenance, echo=FALSE, results='asis'}
-this_file_path <- "dashboards/participants-and-devices/participants-and-devices.qmd"
+this_file_path <- "dashboards/participants-and-devices/participants-and-devices.Rmd"
 
 latest_file_commit <- 
   gh::gh("/repos/:owner/:repo/commits", 
