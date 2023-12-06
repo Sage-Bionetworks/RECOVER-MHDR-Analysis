@@ -1,27 +1,27 @@
-"","DeviceModel","DeviceType","n_participants"
-"1",NA,NA,12
-"2","Pixel 6a","PHONE",6
-"3","Pixel 6","PHONE",2
-"4","SM-F711U","PHONE",2
-"5","SM-S901U","PHONE",2
-"6","Fossil Sport","WATCH",1
-"7","Google Pixel Watch","WATCH",1
-"8","HD1905","PHONE",1
-"9","Pixel 3","PHONE",1
-"10","Pixel 3a","PHONE",1
-"11","Pixel 4a","PHONE",1
-"12","Pixel 5a","PHONE",1
-"13","Pixel 6 Pro","PHONE",1
-"14","Pixel 7","PHONE",1
-"15","Pixel 7 Pro","PHONE",1
-"16","SM-A215U","PHONE",1
-"17","SM-A516U","PHONE",1
-"18","SM-G780G","PHONE",1
-"19","SM-G970U1","PHONE",1
-"20","SM-G973U","PHONE",1
-"21","SM-G975U","PHONE",1
-"22","SM-G998U","PHONE",1
-"23","SM-R910","WATCH",1
-"24","SM-S911U","PHONE",1
-"25","moto g power","PHONE",1
-"26","moto x4","PHONE",1
+"DeviceModel","DeviceType","n_participants"
+NA,NA,12
+"Pixel 6a","PHONE",6
+"Pixel 6","PHONE",2
+"SM-F711U","PHONE",2
+"SM-S901U","PHONE",2
+"Fossil Sport","WATCH",1
+"Google Pixel Watch","WATCH",1
+"HD1905","PHONE",1
+"Pixel 3","PHONE",1
+"Pixel 3a","PHONE",1
+"Pixel 4a","PHONE",1
+"Pixel 5a","PHONE",1
+"Pixel 6 Pro","PHONE",1
+"Pixel 7","PHONE",1
+"Pixel 7 Pro","PHONE",1
+"SM-A215U","PHONE",1
+"SM-A516U","PHONE",1
+"SM-G780G","PHONE",1
+"SM-G970U1","PHONE",1
+"SM-G973U","PHONE",1
+"SM-G975U","PHONE",1
+"SM-G998U","PHONE",1
+"SM-R910","WATCH",1
+"SM-S911U","PHONE",1
+"moto g power","PHONE",1
+"moto x4","PHONE",1

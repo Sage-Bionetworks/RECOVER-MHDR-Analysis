@@ -1,6 +1,6 @@
-"","dataset","n_participants"
-"1","fitbit",204
-"2","healthkit",188
-"3","googlefit",27
-"4","symptomlog",106
-"5","enrolledparticipants",801
+"dataset","n_participants"
+"fitbit",204
+"healthkit",188
+"googlefit",27
+"symptomlog",106
+"enrolledparticipants",801
