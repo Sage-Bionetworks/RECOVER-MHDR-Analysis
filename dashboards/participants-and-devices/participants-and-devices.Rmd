@@ -28,7 +28,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2023-09-08"
+ARCHIVE_VERSION <- "2023-08-02"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -45,10 +45,12 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
+DASHBOARD_FOLDER_SYNID <- "syn53122914"
 FOLDER_NAME <- "Participants and Devices"
+
 knit2synapse:::createAndKnitToFolderEntityClient(
   file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
-  parentId = "syn53122914",
+  parentId = DASHBOARD_FOLDER_SYNID,
   folderName = FOLDER_NAME)
 ```
 
@@ -374,7 +376,7 @@ write.csv((pq_n_records %>% arrange(desc(n_records))),
 ```{r record count per dataset table, echo=FALSE}
 pq_n_records %>% 
       arrange(desc(n_records)) %>% 
-      knitr::kable(format = "html", 
+      knitr::kable(format = "markdown", 
                    format.args = list(big.mark = ",",
                                       scientific = F))
 ```
@@ -424,7 +426,7 @@ write.csv(pq_pids_by_fitbit_devices,
 
 ```{r unique devices fitbit table, echo=FALSE}
 pq_pids_by_fitbit_devices %>% 
-      knitr::kable(format = "html")
+      knitr::kable(format = "markdown")
 ```
 
 </details>
@@ -464,7 +466,7 @@ write.csv(pq_pids_by_googlefit,
 
 ```{r unique devices google fit table, echo=FALSE}
 pq_pids_by_googlefit %>% 
-      knitr::kable(format = "html")
+      knitr::kable(format = "markdown")
 ```
 
 </details>
@@ -528,7 +530,7 @@ write.csv(pq_filtered_pids_by_hk,
 
 ```{r unique devices filtered healthkit table, echo=FALSE}
 pq_filtered_pids_by_hk %>% 
-      knitr::kable(format = "html")
+      knitr::kable(format = "markdown")
 ```
 
 </details>
@@ -565,7 +567,7 @@ write.csv(pq_n_devices_per_participant,
 
 ```{r count devices per participant table, echo=FALSE}
 pq_n_devices_per_participant %>% 
-      knitr::kable(format = "html")
+      knitr::kable(format = "markdown")
 ```
 
 </details>
@@ -629,7 +631,7 @@ curr_state[3, 5] <- curr_state[3, 1] + curr_state[3, 2] + curr_state[3, 3] + cur
 
 curr_state <- curr_state %>% as.data.frame()
 
-curr_state %>% knitr::kable(format = "html")
+curr_state %>% knitr::kable(format = "markdown")
 
 write.csv(curr_state, 
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'),
