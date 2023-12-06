@@ -566,9 +566,8 @@ pq_device_pids_mismatch_fitbit <-
       length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_rhr$ParticipantIdentifier %>% unique() %>% sort()))]),
       length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_sleeplogs$ParticipantIdentifier %>% unique() %>% sort()))])
     )
-  )
-
-pq_device_pids_mismatch_fitbit %>% rmarkdown::paged_table()
+  ) %>% 
+  arrange(desc(n_participants))
 
 pq_device_pids_mismatch_fitbit %>% 
   ggpubr::ggbarplot(x = "dataset",
