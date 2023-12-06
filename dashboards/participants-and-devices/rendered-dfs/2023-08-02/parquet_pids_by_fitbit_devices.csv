@@ -1,26 +1,26 @@
-"","Device","Type","n_participants"
-"1","Sense 2","TRACKER",70
-"2","Charge 5","TRACKER",28
-"3","MobileTrack","TRACKER",9
-"4","Aria","SCALE",7
-"5","Inspire 2","TRACKER",7
-"6","Charge 2","TRACKER",6
-"7","Sense","TRACKER",6
-"8","Versa 2","TRACKER",5
-"9","Versa 3","TRACKER",5
-"10","Charge 4","TRACKER",4
-"11","Alta HR","TRACKER",3
-"12","Aria Air","SCALE",3
-"13","Charge HR","TRACKER",3
-"14","Inspire HR","TRACKER",3
-"15","Blaze","TRACKER",2
-"16","Charge 3","TRACKER",2
-"17","Flex","TRACKER",2
-"18","Google Pixel Watch","TRACKER",2
-"19","Versa","TRACKER",2
-"20","Zip","TRACKER",2
-"21","Ace","TRACKER",1
-"22","Aria 2","SCALE",1
-"23","Luxe","TRACKER",1
-"24","Surge","TRACKER",1
-"25","Versa 4","TRACKER",1
+"Device","Type","n_participants"
+"Sense 2","TRACKER",70
+"Charge 5","TRACKER",28
+"MobileTrack","TRACKER",9
+"Aria","SCALE",7
+"Inspire 2","TRACKER",7
+"Charge 2","TRACKER",6
+"Sense","TRACKER",6
+"Versa 2","TRACKER",5
+"Versa 3","TRACKER",5
+"Charge 4","TRACKER",4
+"Alta HR","TRACKER",3
+"Aria Air","SCALE",3
+"Charge HR","TRACKER",3
+"Inspire HR","TRACKER",3
+"Blaze","TRACKER",2
+"Charge 3","TRACKER",2
+"Flex","TRACKER",2
+"Google Pixel Watch","TRACKER",2
+"Versa","TRACKER",2
+"Zip","TRACKER",2
+"Ace","TRACKER",1
+"Aria 2","SCALE",1
+"Luxe","TRACKER",1
+"Surge","TRACKER",1
+"Versa 4","TRACKER",1

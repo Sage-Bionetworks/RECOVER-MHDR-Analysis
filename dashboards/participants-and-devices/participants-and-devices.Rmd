@@ -287,7 +287,7 @@ pq_pids_by_cohort %>%
                     fill = "grey25") %>% 
   ggpar(legend = "none")
 
-write.csv(pq_pids_by_cohort, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_cohort.csv'))
+write.csv(pq_pids_by_cohort, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_cohort.csv'), row.names = F)
 ```
 
 ### Per Dataset
@@ -308,7 +308,7 @@ pq_pids_by_dataset %>%
                     fill = "grey25") %>% 
   ggpar(legend = "none")
 
-write.csv(pq_pids_by_dataset, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_dataset.csv'))
+write.csv(pq_pids_by_dataset, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_dataset.csv'), row.names = F)
 ```
 
 ### Contributing to Multiple Datasets
@@ -330,7 +330,9 @@ pq_pids_multiple_datasets %>%
                     fill = "grey25") %>% 
   ggpar(legend = "none")
 
-write.csv(pq_pids_multiple_datasets, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_multiple_datasets.csv'))
+write.csv(pq_pids_multiple_datasets,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_multiple_datasets.csv'), 
+          row.names = F)
 ```
 
 
@@ -371,7 +373,9 @@ cat("<details>\n<summary>Expand for full table</summary>\n",
                                       scientific = F)),
     "\n</details>")
 
-write.csv((pq_n_records %>% arrange(desc(n_records))), glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_records_per_dataset.csv'))
+write.csv((pq_n_records %>% arrange(desc(n_records))),
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_records_per_dataset.csv'),
+          row.names = F)
 ```
 
 <!-- ### Average number of days of data per participant -->
@@ -412,7 +416,9 @@ cat("<details>\n<summary>Expand for full table</summary>\n",
       knitr::kable(format = "html"),
     "\n</details>")
 
-write.csv(pq_pids_by_fitbit_devices, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_fitbit_devices.csv'))
+write.csv(pq_pids_by_fitbit_devices,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_fitbit_devices.csv'),
+          row.names = F)
 ```
 
 #### Google Fit
@@ -446,7 +452,9 @@ cat("<details>\n<summary>Expand for full table</summary>\n",
     "\n</details>")
 
 
-write.csv(pq_pids_by_googlefit, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_googlefit.csv'))
+write.csv(pq_pids_by_googlefit, 
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_googlefit.csv'),
+          row.names = F)
 ```
 
 #### HealthKit
@@ -459,7 +467,9 @@ pq_large_pids_by_hk <-
   arrange(desc(n_participants)) %>% 
   ungroup()
 # pq_large_pids_by_hk %>% rmarkdown::paged_table()
-write.csv(pq_large_pids_by_hk, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_large_pids_by_hk.csv'))
+write.csv(pq_large_pids_by_hk, 
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_large_pids_by_hk.csv'), 
+          row.names = F)
 ```
 
 ```{r, echo=FALSE}
@@ -501,7 +511,9 @@ cat("<details>\n<summary>Expand for full table</summary>\n",
       knitr::kable(format = "html"),
     "\n</details>")
 
-write.csv(pq_filtered_pids_by_hk, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_filtered_pids_by_hk.csv'))
+write.csv(pq_filtered_pids_by_hk,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_filtered_pids_by_hk.csv'), 
+          row.names = F)
 ```
 
 
@@ -532,7 +544,9 @@ cat("<details>\n<summary>Expand for full table</summary>\n",
       knitr::kable(format = "html"),
     "\n</details>")
 
-write.csv(pq_n_devices_per_participant, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_n_devices_per_participant.csv'))
+write.csv(pq_n_devices_per_participant,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_n_devices_per_participant.csv'), 
+          row.names = F)
 ```
 
 ### Number of Participants Without Device Data Found in Non-Device Files {.tabset}
@@ -563,7 +577,9 @@ pq_device_pids_mismatch_fitbit %>%
                     fill = "grey25",
                     color = "grey25")
 
-write.csv(pq_device_pids_mismatch_fitbit, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_device_pids_mismatch_fitbit.csv'))
+write.csv(pq_device_pids_mismatch_fitbit,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_device_pids_mismatch_fitbit.csv'), 
+          row.names = F)
 ```
 
 
@@ -595,7 +611,9 @@ curr_state <- curr_state %>% as.data.frame()
 
 curr_state %>% knitr::kable(format = "html")
 
-write.csv(curr_state, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'))
+write.csv(curr_state, 
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'),
+          row.names = T)
 ```
 
 ## Code used 
