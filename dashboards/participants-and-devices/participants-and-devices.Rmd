@@ -365,18 +365,22 @@ pq_n_records %>%
   ggpar(legend = "none", 
         rotate = T, subtitle = "For n_records > 75th percentile")
 
-cat("<details>\n<summary>Expand for full table</summary>\n", 
-    pq_n_records %>% 
-      arrange(desc(n_records)) %>% 
-      knitr::kable(format = "html", 
-                   format.args = list(big.mark = ",",
-                                      scientific = F)),
-    "\n</details>")
-
 write.csv((pq_n_records %>% arrange(desc(n_records))),
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_records_per_dataset.csv'),
           row.names = F)
 ```
+<details>
+<summary>Expand for full table</summary>
+
+```{r, echo=FALSE}
+pq_n_records %>% 
+      arrange(desc(n_records)) %>% 
+      knitr::kable(format = "html", 
+                   format.args = list(big.mark = ",",
+                                      scientific = F))
+```
+
+</details>
 
 <!-- ### Average number of days of data per participant -->
 
@@ -411,15 +415,20 @@ pq_pids_by_fitbit_devices %>%
                 # font.ytickslab = 8,
                 subtitle = "For top 5 values of n_participants")
 
-cat("<details>\n<summary>Expand for full table</summary>\n", 
-    pq_pids_by_fitbit_devices %>% 
-      knitr::kable(format = "html"),
-    "\n</details>")
-
 write.csv(pq_pids_by_fitbit_devices,
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_fitbit_devices.csv'),
           row.names = F)
 ```
+
+<details>
+<summary>Expand for full table</summary>
+
+```{r, echo=FALSE}
+pq_pids_by_fitbit_devices %>% 
+      knitr::kable(format = "html")
+```
+
+</details>
 
 #### Google Fit
 
@@ -446,16 +455,20 @@ pq_pids_by_googlefit %>%
                 # font.ytickslab = 8,
                 subtitle = "For top 5 values of n_participants")
 
-cat("<details>\n<summary>Expand for full table</summary>\n", 
-    pq_pids_by_googlefit %>% 
-      knitr::kable(format = "html"),
-    "\n</details>")
-
-
 write.csv(pq_pids_by_googlefit, 
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_googlefit.csv'),
           row.names = F)
 ```
+
+<details>
+<summary>Expand for full table</summary>
+
+```{r, echo=FALSE}
+pq_pids_by_googlefit %>% 
+      knitr::kable(format = "html")
+```
+
+</details>
 
 #### HealthKit
 
@@ -506,16 +519,20 @@ pq_filtered_pids_by_hk %>%
                 # font.ytickslab = 8,
                 subtitle = "For top 5 values of n_participants")
 
-cat("<details>\n<summary>Expand for full table</summary>\n", 
-    pq_filtered_pids_by_hk %>% 
-      knitr::kable(format = "html"),
-    "\n</details>")
-
 write.csv(pq_filtered_pids_by_hk,
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_filtered_pids_by_hk.csv'), 
           row.names = F)
 ```
 
+<details>
+<summary>Expand for full table</summary>
+
+```{r, echo=FALSE}
+pq_filtered_pids_by_hk %>% 
+      knitr::kable(format = "html")
+```
+
+</details>
 
 ### Devices per Participant
 
@@ -539,15 +556,20 @@ pq_n_devices_per_participant %>%
                     position = position_dodge(0.9),
                     title = "Number of Unique Devices Used by Participants")
 
-cat("<details>\n<summary>Expand for full table</summary>\n", 
-    pq_n_devices_per_participant %>% 
-      knitr::kable(format = "html"),
-    "\n</details>")
-
 write.csv(pq_n_devices_per_participant,
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_n_devices_per_participant.csv'), 
           row.names = F)
 ```
+
+<details>
+<summary>Expand for full table</summary>
+
+```{r, echo=FALSE}
+pq_n_devices_per_participant %>% 
+      knitr::kable(format = "html")
+```
+
+</details>
 
 ### Number of Participants Without Device Data Found in Non-Device Files {.tabset}
 
