@@ -10,12 +10,12 @@ output:
       smooth-scroll: true
 ---
 
-```{r, setup, include=FALSE}
+```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
 knitr::opts_knit$set(echo = FALSE)
 ```
 
-```{r, include=FALSE, warning=FALSE, message=FALSE}
+```{r libraries and archive version, include=FALSE, warning=FALSE, message=FALSE}
 
 library(lubridate)
 library(stringr)
@@ -28,7 +28,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2023-08-02"
+ARCHIVE_VERSION <- "2023-09-08"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -53,8 +53,7 @@ knit2synapse:::createAndKnitToFolderEntityClient(
 ```
 
 
-```{r, include=FALSE, message=FALSE, warning=FALSE}
-
+```{r sync data, include=FALSE, message=FALSE, warning=FALSE}
 # synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 # 
 # token <- synapser::synGetStsStorageToken(
@@ -77,13 +76,13 @@ knit2synapse:::createAndKnitToFolderEntityClient(
 #            'AWS_SESSION_TOKEN'=token$sessionToken)
 # 
 # AWS_PARQUET_DOWNLOAD_LOCATION <- '~/RECOVER-MHDR-Analysis/parquet/'
-# unlink(AWS_PARQUET_DOWNLOAD_LOCATION, recursive = T, force = T)
+# # unlink(AWS_PARQUET_DOWNLOAD_LOCATION, recursive = T, force = T)
 # sync_cmd <- glue::glue('aws s3 sync {base_s3_uri} {AWS_PARQUET_DOWNLOAD_LOCATION}{ARCHIVE_VERSION}/ --exclude "*owner.txt*" --exclude "*archive*"')
 # system(sync_cmd)
 ```
 
 
-```{r, include=FALSE}
+```{r open datasets, include=FALSE}
 
 enrolled <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants/')) %>% collect()
 enrolled_symptoms <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants_customfields_symptoms/')) %>% collect()
@@ -116,7 +115,7 @@ symptomlog_treatments <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSIO
 ```
 
 
-```{r, include=FALSE}
+```{r all participants by dataset, include=FALSE}
 
 all_participants_by_dataset <- tibble(dataset = character(), ParticipantIdentifier = character())
 all_participants_by_dataset <- 
@@ -181,7 +180,7 @@ all_participants_by_dataset <-
 ```
 
 
-```{r, include=FALSE, cache.lazy=FALSE}
+```{r merge healthkit device datasets, include=FALSE, cache.lazy=FALSE}
 
 # Unique HealthKit Devices ------------------------------------------------
 hk_devices <- bind_rows(
@@ -202,7 +201,7 @@ hk_devices <- bind_rows(
 ```
 
 
-```{r, include=FALSE}
+```{r devices per participant, include=FALSE}
 
 # Devices per Participant -------------------------------------------------
 devices_per_pid_fitbit <- 
@@ -242,7 +241,7 @@ devices_per_pid_hk <-
 ```
 
 
-```{r, include=FALSE}
+```{r create device data mismatch dataframes, include=FALSE}
 
 # Number of Participants Without Device Data Found in Non-Device Files ----
 mismatch_pids_fitbit <- 
@@ -268,7 +267,7 @@ mismatch_pids_fitbit <-
 
 ### By Cohort
 
-```{r, echo=FALSE}
+```{r count unique participants by cohort, echo=FALSE}
 pq_pids_by_cohort <- 
   all_participants_by_dataset %>%
   group_by(cohort = case_when(
@@ -292,7 +291,7 @@ write.csv(pq_pids_by_cohort, glue::glue('./dashboards/participants-and-devices/r
 
 ### Per Dataset
 
-```{r, echo=FALSE}
+```{r count unique participants by dataset, echo=FALSE}
 pq_pids_by_dataset <- 
   all_participants_by_dataset %>% 
   group_by(dataset) %>% 
@@ -312,7 +311,7 @@ write.csv(pq_pids_by_dataset, glue::glue('./dashboards/participants-and-devices/
 ```
 
 ### Contributing to Multiple Datasets
-```{r, echo=FALSE}
+```{r count participants contributing to multiple datasets, echo=FALSE}
 pq_pids_multiple_datasets <- 
   all_participants_by_dataset %>% 
   group_by(ParticipantIdentifier) %>%
@@ -340,7 +339,7 @@ write.csv(pq_pids_multiple_datasets,
 
 A record is a single row in a parquet dataset (after removal of duplicate data)
 
-```{r, echo=FALSE}
+```{r count records dataframe, echo=FALSE}
 pq_n_records <- tibble()
 for (dir in list.dirs(paste0('./parquet/', ARCHIVE_VERSION, '/'), recursive = F)) {
   rows <- open_dataset(dir) %>% nrow()
@@ -350,7 +349,7 @@ for (dir in list.dirs(paste0('./parquet/', ARCHIVE_VERSION, '/'), recursive = F)
 }
 ```
 
-```{r, echo=FALSE}
+```{r record count per dataset viz, echo=FALSE}
 pq_n_records %>% 
   arrange(desc(n_records)) %>% 
   filter(n_records >= quantile(n_records, 0.75)) %>%
@@ -372,7 +371,7 @@ write.csv((pq_n_records %>% arrange(desc(n_records))),
 <details>
 <summary>Expand for full table</summary>
 
-```{r, echo=FALSE}
+```{r record count per dataset table, echo=FALSE}
 pq_n_records %>% 
       arrange(desc(n_records)) %>% 
       knitr::kable(format = "html", 
@@ -394,7 +393,7 @@ pq_n_records %>%
 
 #### Fitbit
 
-```{r, echo=FALSE}
+```{r unique devices fitbit viz, echo=FALSE}
 pq_pids_by_fitbit_devices <- 
   fitbit_devices %>% 
   select(ParticipantIdentifier, Device, Type) %>% 
@@ -423,7 +422,7 @@ write.csv(pq_pids_by_fitbit_devices,
 <details>
 <summary>Expand for full table</summary>
 
-```{r, echo=FALSE}
+```{r unique devices fitbit table, echo=FALSE}
 pq_pids_by_fitbit_devices %>% 
       knitr::kable(format = "html")
 ```
@@ -432,7 +431,7 @@ pq_pids_by_fitbit_devices %>%
 
 #### Google Fit
 
-```{r, echo=FALSE}
+```{r unique devices google fit viz, echo=FALSE}
 pq_pids_by_googlefit <- 
   googlefit %>% 
   select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
@@ -463,7 +462,7 @@ write.csv(pq_pids_by_googlefit,
 <details>
 <summary>Expand for full table</summary>
 
-```{r, echo=FALSE}
+```{r unique devices google fit table, echo=FALSE}
 pq_pids_by_googlefit %>% 
       knitr::kable(format = "html")
 ```
@@ -472,7 +471,7 @@ pq_pids_by_googlefit %>%
 
 #### HealthKit
 
-```{r, include=FALSE, echo=FALSE}
+```{r unique devices large healthkit table, include=FALSE, echo=FALSE}
 pq_large_pids_by_hk <- 
   hk_devices %>% 
   group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
@@ -485,7 +484,7 @@ write.csv(pq_large_pids_by_hk,
           row.names = F)
 ```
 
-```{r, echo=FALSE}
+```{r unique devices filtered healthkit viz, echo=FALSE}
 pq_filtered_pids_by_hk <- 
   hk_devices %>%
   select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier) %>%
@@ -527,7 +526,7 @@ write.csv(pq_filtered_pids_by_hk,
 <details>
 <summary>Expand for full table</summary>
 
-```{r, echo=FALSE}
+```{r unique devices filtered healthkit table, echo=FALSE}
 pq_filtered_pids_by_hk %>% 
       knitr::kable(format = "html")
 ```
@@ -536,7 +535,7 @@ pq_filtered_pids_by_hk %>%
 
 ### Devices per Participant
 
-```{r, echo=FALSE}
+```{r count devices per participant viz, echo=FALSE}
 pq_n_devices_per_participant <- 
   bind_rows(devices_per_pid_fitbit, 
           devices_per_pid_googlefit, 
@@ -564,7 +563,7 @@ write.csv(pq_n_devices_per_participant,
 <details>
 <summary>Expand for full table</summary>
 
-```{r, echo=FALSE}
+```{r count devices per participant table, echo=FALSE}
 pq_n_devices_per_participant %>% 
       knitr::kable(format = "html")
 ```
@@ -577,7 +576,7 @@ E.g. N participant IDs were found in the 'fitbit_activitylogs' dataset but not i
 
 #### Fitbit
 
-```{r, echo=FALSE}
+```{r device data mismatch fitbit viz, echo=FALSE}
 pq_device_pids_mismatch_fitbit <- 
   data.frame(
     dataset = c("activitylogs", "dailydata", "intradaycombined", "restingheartrate", "sleeplogs"),
@@ -606,7 +605,7 @@ write.csv(pq_device_pids_mismatch_fitbit,
 
 ## Current State of Data
 
-```{r, echo=FALSE}
+```{r current state of data table, echo=FALSE}
 row_vals <- c("Participants", "Watch/Tracker", "TotalRecords")
 col_vals <- c("Fitbit", "HealthKit", "GoogleFit", "Symptoms", "Total")
 
