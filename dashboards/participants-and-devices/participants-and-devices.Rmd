@@ -24,10 +24,15 @@ library(arrow)
 library(tidyr)
 library(synapser)
 library(knit2synapse)
+library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ARCHIVE_VERSION <- "2023-08-02"
+
+if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
+  dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
+}
 ```
 
 Using data from external parquet archive version: `r ARCHIVE_VERSION`
@@ -40,10 +45,11 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
+FOLDER_NAME <- "Participants and Devices"
 knit2synapse:::createAndKnitToFolderEntityClient(
   file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
-  parentId = "syn53067691",
-  folderName = ARCHIVE_VERSION)
+  parentId = "syn53122914",
+  folderName = FOLDER_NAME)
 ```
 
 
@@ -271,8 +277,17 @@ pq_pids_by_cohort <-
     TRUE ~ "Other"
   )) %>%
   summarise(n_participants = n_distinct(ParticipantIdentifier))
-pq_pids_by_cohort %>% rmarkdown::paged_table()
-write.csv(pq_pids_by_cohort, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_cohort.csv')
+
+pq_pids_by_cohort %>% 
+  arrange(desc(n_participants)) %>% 
+  ggpubr::ggbarplot(x = "cohort",
+                    y = "n_participants", 
+                    label = TRUE, 
+                    color = "grey25", 
+                    fill = "grey25") %>% 
+  ggpar(legend = "none")
+
+write.csv(pq_pids_by_cohort, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_cohort.csv'))
 ```
 
 ### Per Dataset
@@ -283,8 +298,17 @@ pq_pids_by_dataset <-
   group_by(dataset) %>% 
   summarise(n_participants = n_distinct(ParticipantIdentifier))
 pq_pids_by_dataset <- pq_pids_by_dataset[match(c("fitbit", "healthkit", "googlefit", "symptomlog", "enrolledparticipants"), pq_pids_by_dataset$dataset), ]
-pq_pids_by_dataset %>% rmarkdown::paged_table()
-write.csv(pq_pids_by_dataset, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_dataset.csv')
+
+pq_pids_by_dataset %>% 
+  arrange(desc(n_participants)) %>% 
+  ggpubr::ggbarplot(x = "dataset", 
+                    y = "n_participants", 
+                    label = TRUE,
+                    color = "grey25", 
+                    fill = "grey25") %>% 
+  ggpar(legend = "none")
+
+write.csv(pq_pids_by_dataset, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_dataset.csv'))
 ```
 
 ### Contributing to Multiple Datasets
@@ -295,8 +319,18 @@ pq_pids_multiple_datasets <-
   summarise(n_datasets_contributing_to = n_distinct(dataset)) %>%
   group_by(n_datasets_contributing_to) %>%
   summarise(n_participants = n())
-pq_pids_multiple_datasets %>% rmarkdown::paged_table()
-write.csv(pq_pids_multiple_datasets, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_multiple_datasets.csv')
+
+pq_pids_multiple_datasets %>% 
+  arrange(desc(n_participants)) %>% 
+  mutate(n_datasets_contributing_to = as.factor(n_datasets_contributing_to)) %>% 
+  ggpubr::ggbarplot(x = "n_datasets_contributing_to", 
+                    y = "n_participants",
+                    label = TRUE,
+                    color = "grey25", 
+                    fill = "grey25") %>% 
+  ggpar(legend = "none")
+
+write.csv(pq_pids_multiple_datasets, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_multiple_datasets.csv'))
 ```
 
 
@@ -315,8 +349,29 @@ for (dir in list.dirs(paste0('./parquet/', ARCHIVE_VERSION, '/'), recursive = F)
 ```
 
 ```{r, echo=FALSE}
-pq_n_records %>% arrange(desc(n_records)) %>% rmarkdown::paged_table()
-write.csv((pq_n_records %>% arrange(desc(n_records))), './dashboards/participants-and-devices/rendered-dfs/parquet_records_per_dataset.csv')
+pq_n_records %>% 
+  arrange(desc(n_records)) %>% 
+  filter(n_records >= quantile(n_records, 0.75)) %>%
+  ggpubr::ggbarplot(x = "dataset", 
+                    y = "n_records",
+                    # label = F,
+                    # lab.pos = "in",
+                    # lab.hjust = .4,
+                    color = "grey25", 
+                    fill = "grey25", 
+                    title = "Dataset Record Count") %>% 
+  ggpar(legend = "none", 
+        rotate = T, subtitle = "For n_records > 75th percentile")
+
+cat("<details>\n<summary>Expand for full table</summary>\n", 
+    pq_n_records %>% 
+      arrange(desc(n_records)) %>% 
+      knitr::kable(format = "html", 
+                   format.args = list(big.mark = ",",
+                                      scientific = F)),
+    "\n</details>")
+
+write.csv((pq_n_records %>% arrange(desc(n_records))), glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_records_per_dataset.csv'))
 ```
 
 <!-- ### Average number of days of data per participant -->
@@ -338,8 +393,26 @@ pq_pids_by_fitbit_devices <-
   group_by(Device, Type) %>% 
   summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
   arrange(desc(n_participants))
-pq_pids_by_fitbit_devices %>% rmarkdown::paged_table()
-write.csv(pq_pids_by_fitbit_devices, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_fitbit_devices.csv')
+
+pq_pids_by_fitbit_devices %>% 
+  ggpubr::ggbarplot(x = "Device",
+                    y = "n_participants",
+                    top = 5,
+                    fill = "grey25",
+                    color = "grey25",
+                    # palette = "Paired",
+                    # position = position_dodge(0.9)
+                    title = "Unique Device Count - Fitbit") %>%
+  ggpubr::ggpar(rotate = T, 
+                # font.ytickslab = 8,
+                subtitle = "For top 5 values of n_participants")
+
+cat("<details>\n<summary>Expand for full table</summary>\n", 
+    pq_pids_by_fitbit_devices %>% 
+      knitr::kable(format = "html"),
+    "\n</details>")
+
+write.csv(pq_pids_by_fitbit_devices, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_fitbit_devices.csv'))
 ```
 
 #### Google Fit
@@ -353,8 +426,27 @@ pq_pids_by_googlefit <-
   arrange(desc(n_participants)) %>% 
   rename(DeviceModel=OriginalDataSourceDeviceModel,
          DeviceType=OriginalDataSourceDeviceType)
-pq_pids_by_googlefit %>% rmarkdown::paged_table()
-write.csv(pq_pids_by_googlefit, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_googlefit.csv')
+
+pq_pids_by_googlefit %>% 
+  ggpubr::ggbarplot(x = "DeviceModel",
+                    y = "n_participants",
+                    top = 5,
+                    fill = "grey25",
+                    color = "grey25",
+                    # palette = "Paired",
+                    # position = position_dodge(0.9)
+                    title = "Unique Device Count - Google Fit") %>%
+  ggpubr::ggpar(rotate = T, 
+                # font.ytickslab = 8,
+                subtitle = "For top 5 values of n_participants")
+
+cat("<details>\n<summary>Expand for full table</summary>\n", 
+    pq_pids_by_googlefit %>% 
+      knitr::kable(format = "html"),
+    "\n</details>")
+
+
+write.csv(pq_pids_by_googlefit, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_googlefit.csv'))
 ```
 
 #### HealthKit
@@ -367,7 +459,7 @@ pq_large_pids_by_hk <-
   arrange(desc(n_participants)) %>% 
   ungroup()
 # pq_large_pids_by_hk %>% rmarkdown::paged_table()
-write.csv(pq_large_pids_by_hk, './dashboards/participants-and-devices/rendered-dfs/parquet_large_pids_by_hk.csv')
+write.csv(pq_large_pids_by_hk, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_large_pids_by_hk.csv'))
 ```
 
 ```{r, echo=FALSE}
@@ -390,8 +482,26 @@ pq_filtered_pids_by_hk <-
   summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>%
   arrange(desc(n_participants)) %>% 
   ungroup()
-pq_filtered_pids_by_hk %>% rmarkdown::paged_table()
-write.csv(pq_filtered_pids_by_hk, './dashboards/participants-and-devices/rendered-dfs/parquet_filtered_pids_by_hk.csv')
+
+pq_filtered_pids_by_hk %>% 
+  ggpubr::ggbarplot(x = "Source",
+                    y = "n_participants",
+                    top = 5,
+                    fill = "grey25",
+                    color = "grey25",
+                    # palette = "Paired",
+                    # position = position_dodge(0.9)
+                    title = "Unique Device Count - HealthKit") %>%
+  ggpubr::ggpar(rotate = T, 
+                # font.ytickslab = 8,
+                subtitle = "For top 5 values of n_participants")
+
+cat("<details>\n<summary>Expand for full table</summary>\n", 
+    pq_filtered_pids_by_hk %>% 
+      knitr::kable(format = "html"),
+    "\n</details>")
+
+write.csv(pq_filtered_pids_by_hk, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_filtered_pids_by_hk.csv'))
 ```
 
 
@@ -402,11 +512,27 @@ pq_n_devices_per_participant <-
   bind_rows(devices_per_pid_fitbit, 
           devices_per_pid_googlefit, 
           devices_per_pid_hk) %>% 
+  mutate(n_devices_per_participant = as.factor(n_devices_per_participant)) %>% 
   group_by(dataset) %>% 
   arrange(n_devices_per_participant, .by_group = T) %>% 
   select(dataset, everything())
-pq_n_devices_per_participant %>% rmarkdown::paged_table()
-write.csv(pq_n_devices_per_participant, './dashboards/participants-and-devices/rendered-dfs/parquet_n_devices_per_participant.csv')
+
+pq_n_devices_per_participant %>% 
+  ggpubr::ggbarplot(x = "dataset",
+                    y = "n_participants",
+                    # top = 5,
+                    fill = "n_devices_per_participant",
+                    color = "n_devices_per_participant",
+                    palette = "Paired",
+                    position = position_dodge(0.9),
+                    title = "Number of Unique Devices Used by Participants")
+
+cat("<details>\n<summary>Expand for full table</summary>\n", 
+    pq_n_devices_per_participant %>% 
+      knitr::kable(format = "html"),
+    "\n</details>")
+
+write.csv(pq_n_devices_per_participant, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_n_devices_per_participant.csv'))
 ```
 
 ### Number of Participants Without Device Data Found in Non-Device Files {.tabset}
@@ -427,8 +553,17 @@ pq_device_pids_mismatch_fitbit <-
       length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_sleeplogs$ParticipantIdentifier %>% unique() %>% sort()))])
     )
   )
+
 pq_device_pids_mismatch_fitbit %>% rmarkdown::paged_table()
-write.csv(pq_device_pids_mismatch_fitbit, './dashboards/participants-and-devices/rendered-dfs/parquet_device_pids_mismatch_fitbit.csv')
+
+pq_device_pids_mismatch_fitbit %>% 
+  ggpubr::ggbarplot(x = "dataset",
+                    y = "n_participants",
+                    label = T,
+                    fill = "grey25",
+                    color = "grey25")
+
+write.csv(pq_device_pids_mismatch_fitbit, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_device_pids_mismatch_fitbit.csv'))
 ```
 
 
@@ -457,8 +592,10 @@ curr_state[3, 4] <- pq_n_records$n_records[which(grepl("dataset_symptomlog*", pq
 curr_state[3, 5] <- curr_state[3, 1] + curr_state[3, 2] + curr_state[3, 3] + curr_state[3, 4]
 
 curr_state <- curr_state %>% as.data.frame()
-curr_state %>% rmarkdown::paged_table()
-write.csv(curr_state, './dashboards/participants-and-devices/rendered-dfs/current_state_of_data.csv')
+
+curr_state %>% knitr::kable(format = "html")
+
+write.csv(curr_state, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'))
 ```
 
 ## Code used 
