@@ -28,7 +28,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2023-09-08"
+ARCHIVE_VERSION <- "2023-09-21"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -45,7 +45,7 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn53128268"
+DASHBOARD_FOLDER_SYNID <- "syn53128270"
 FOLDER_NAME <- "Participants and Devices"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
@@ -78,7 +78,7 @@ knit2synapse:::createAndKnitToFolderEntityClient(
 #            'AWS_SESSION_TOKEN'=token$sessionToken)
 # 
 # AWS_PARQUET_DOWNLOAD_LOCATION <- '~/RECOVER-MHDR-Analysis/parquet/'
-# # unlink(AWS_PARQUET_DOWNLOAD_LOCATION, recursive = T, force = T)
+# unlink(AWS_PARQUET_DOWNLOAD_LOCATION, recursive = T, force = T)
 # sync_cmd <- glue::glue('aws s3 sync {base_s3_uri} {AWS_PARQUET_DOWNLOAD_LOCATION}{ARCHIVE_VERSION}/ --exclude "*owner.txt*" --exclude "*archive*"')
 # system(sync_cmd)
 ```
