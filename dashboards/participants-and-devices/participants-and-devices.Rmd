@@ -28,7 +28,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2023-09-21"
+ARCHIVE_VERSION <- "2023-11-10"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -45,7 +45,7 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn53128270"
+DASHBOARD_FOLDER_SYNID <- "syn53128272"
 FOLDER_NAME <- "Participants and Devices"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
