@@ -390,7 +390,7 @@ upset(as.data.frame(aa3),
 ```{r get provenance, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
 ### Commenting out - doesnt work across users without 
 githubr::setGithubToken(gtToken)
-thisFileName <- "dashboards/Sleep/dashboard_fitbit_sleep_vs_otherData.Rmd" # location of file inside github repo
+thisFileName <- "dashboards/Sleep/dashboard_sleep.Rmd" # location of file inside github repo
 thisRepo <- githubr::getRepo(repository = "itismeghasyam/RECOVER-MHDR-Analysis",
                     ref="branch",
                     refName="main")
