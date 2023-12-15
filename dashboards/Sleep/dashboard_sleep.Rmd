@@ -17,7 +17,7 @@ synapser::synLogin()
 ######### change knit2synapse to Jake's version
 
 #### ARCHIVE VERSION
-ARCHIVE_VERSION <- '2023-09-08'  ## UPDATE archive version here
+ARCHIVE_VERSION <- '2023-09-21'  ## UPDATE archive version here
 
 #### GitHub Token
 gtToken = "<YOUR GITHUB PERSONAL TOKEN>"
@@ -35,7 +35,7 @@ syn_temp$login() # is fails use syn_temp$login(authToken = <yourPAT>)
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
 knit2synapse:::createAndKnitToFolderEntityClient(file = "dashboard_sleep.Rmd",
-                                          parentId = "syn53128268",
+                                          parentId = "syn53128270",
                                           folderName = 'Sleep')
 ```
 
