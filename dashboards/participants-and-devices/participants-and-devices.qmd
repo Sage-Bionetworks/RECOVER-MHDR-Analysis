@@ -10,11 +10,12 @@ format:
     df-print: paged
 execute:
   echo: false
-knitr:
-  opts_knit:
-    root.dir: "~/RECOVER-MHDR-Analysis/"
 
 ---
+
+```{r, setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
+```
 
 ```{r}
 #| output: false
@@ -35,18 +36,6 @@ library(knit2synapse)
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ARCHIVE_VERSION <- "2023-08-02"  ## UPDATE archive version here
-
-synapseclient <- reticulate::import("synapseclient")
-syn_temp <- synapseclient$Synapse()
-syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
-
-
-### Please install v1.28 of reticulate, as this is the needed version for synapser
-### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-knit2synapse:::createAndKnitToFolderEntityClient(
-  file = "participants-and-devices.qmd",
-  parentId = "syn53067691",
-  folderName = ARCHIVE_VERSION)
 ```
 
 
@@ -86,34 +75,35 @@ knit2synapse:::createAndKnitToFolderEntityClient(
 
 ```{r}
 #| output: false
-enrolled <- arrow::open_dataset('./parquet/dataset_enrolledparticipants/') %>% collect()
-enrolled_symptoms <- arrow::open_dataset('./parquet/dataset_enrolledparticipants_customfields_symptoms/') %>% collect()
-enrolled_treatments <- arrow::open_dataset('./parquet/dataset_enrolledparticipants_customfields_treatments/') %>% collect()
-fitbit_actlogs <- arrow::open_dataset('./parquet/dataset_fitbitactivitylogs/') %>% collect()
-fitbit_dailydata <- arrow::open_dataset('./parquet/dataset_fitbitdailydata/') %>% collect()
-fitbit_devices <- arrow::open_dataset('./parquet/dataset_fitbitdevices/') %>% collect()
-fitbit_intracomb <- arrow::open_dataset('./parquet/dataset_fitbitintradaycombined/') %>% 
+
+enrolled <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants/')) %>% collect()
+enrolled_symptoms <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants_customfields_symptoms/')) %>% collect()
+enrolled_treatments <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_enrolledparticipants_customfields_treatments/')) %>% collect()
+fitbit_actlogs <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitactivitylogs/')) %>% collect()
+fitbit_dailydata <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitdailydata/')) %>% collect()
+fitbit_devices <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitdevices/')) %>% collect()
+fitbit_intracomb <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitintradaycombined/')) %>% 
   select(ParticipantIdentifier) %>% 
   distinct() %>% 
   collect()
-fitbit_rhr <- arrow::open_dataset('./parquet/dataset_fitbitrestingheartrates/') %>% collect()
-fitbit_sleeplogs <- arrow::open_dataset('./parquet/dataset_fitbitsleeplogs/') %>% collect()
-fitbit_sleeplogdetail <- arrow::open_dataset('./parquet/dataset_fitbitsleeplogs_sleeplogdetails/') %>% collect()
-googlefit <- arrow::open_dataset('./parquet/dataset_googlefitsamples/') %>% collect()
-hk_activitysummaries <- arrow::open_dataset('./parquet/dataset_healthkitv2activitysummaries/') %>% collect()
-hk_ecg <- arrow::open_dataset('./parquet/dataset_healthkitv2electrocardiogram/') %>% collect()
-hk_ecg_subsamples <- arrow::open_dataset('./parquet/dataset_healthkitv2electrocardiogram_subsamples/') %>% collect()
-hk_heartbeat <- arrow::open_dataset('./parquet/dataset_healthkitv2heartbeat/') %>% collect()
-hk_heartbeat_subsamples <- arrow::open_dataset('./parquet/dataset_healthkitv2heartbeat_subsamples/') %>% collect()
-hk_samples <- arrow::open_dataset('./parquet/dataset_healthkitv2samples/') %>% 
+fitbit_rhr <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitrestingheartrates/')) %>% collect()
+fitbit_sleeplogs <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitsleeplogs/')) %>% collect()
+fitbit_sleeplogdetail <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_fitbitsleeplogs_sleeplogdetails/')) %>% collect()
+googlefit <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_googlefitsamples/')) %>% collect()
+hk_activitysummaries <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2activitysummaries/')) %>% collect()
+hk_ecg <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2electrocardiogram/')) %>% collect()
+hk_ecg_subsamples <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2electrocardiogram_subsamples/')) %>% collect()
+hk_heartbeat <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2heartbeat/')) %>% collect()
+hk_heartbeat_subsamples <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2heartbeat_subsamples/')) %>% collect()
+hk_samples <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2samples/')) %>% 
   select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
   collect()
-hk_stats <- arrow::open_dataset('./parquet/dataset_healthkitv2statistics/') %>% collect()
-hk_workouts <- arrow::open_dataset('./parquet/dataset_healthkitv2workouts/') %>% collect()
-hk_workouts_events <- arrow::open_dataset('./parquet/dataset_healthkitv2workouts_events/') %>% collect()
-symptomlog <- arrow::open_dataset('./parquet/dataset_symptomlog/') %>% collect()
-symptomlog_symptoms <- arrow::open_dataset('./parquet/dataset_symptomlog_value_symptoms/') %>% collect()
-symptomlog_treatments <- arrow::open_dataset('./parquet/dataset_symptomlog_value_treatments//') %>% collect()
+hk_stats <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2statistics/')) %>% collect()
+hk_workouts <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2workouts/')) %>% collect()
+hk_workouts_events <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_healthkitv2workouts_events/')) %>% collect()
+symptomlog <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_symptomlog/')) %>% collect()
+symptomlog_symptoms <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_symptomlog_value_symptoms/')) %>% collect()
+symptomlog_treatments <- arrow::open_dataset(paste0('./parquet/', ARCHIVE_VERSION, '/dataset_symptomlog_value_treatments//')) %>% collect()
 ```
 
 
@@ -285,7 +275,7 @@ pq_pids_by_cohort <-
   )) %>%
   summarise(n_participants = n_distinct(ParticipantIdentifier))
 pq_pids_by_cohort
-write.csv(pq_pids_by_cohort, './rendered_dfs/parquet-metrics/parquet_pids_by_cohort.csv')
+write.csv(pq_pids_by_cohort, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_cohort.csv')
 ```
 
 ### Per Dataset
@@ -297,7 +287,7 @@ pq_pids_by_dataset <-
   summarise(n_participants = n_distinct(ParticipantIdentifier))
 pq_pids_by_dataset <- pq_pids_by_dataset[match(c("fitbit", "healthkit", "googlefit", "symptomlog", "enrolledparticipants"), pq_pids_by_dataset$dataset), ]
 pq_pids_by_dataset
-write.csv(pq_pids_by_dataset, './rendered_dfs/parquet-metrics/parquet_pids_by_dataset.csv')
+write.csv(pq_pids_by_dataset, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_dataset.csv')
 ```
 
 ### Contributing to Multiple Datasets
@@ -309,7 +299,7 @@ pq_pids_multiple_datasets <-
   group_by(n_datasets_contributing_to) %>%
   summarise(n_participants = n())
 pq_pids_multiple_datasets
-write.csv(pq_pids_multiple_datasets, './rendered_dfs/parquet-metrics/parquet_pids_multiple_datasets.csv')
+write.csv(pq_pids_multiple_datasets, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_multiple_datasets.csv')
 ```
 
 :::
@@ -320,7 +310,7 @@ A record is a single row in a parquet dataset (after removal of duplicate data)
 
 ```{r}
 pq_n_records <- tibble()
-for (dir in list.dirs('./parquet/', recursive = F)) {
+for (dir in list.dirs(paste0('./parquet/', ARCHIVE_VERSION, '/'), recursive = F)) {
   rows <- open_dataset(dir) %>% nrow()
   name <- basename(dir)
   current <- tibble(dataset = name, n_records = rows)
@@ -330,7 +320,7 @@ for (dir in list.dirs('./parquet/', recursive = F)) {
 
 ```{r}
 pq_n_records %>% arrange(desc(n_records))
-write.csv((pq_n_records %>% arrange(desc(n_records))), './rendered_dfs/parquet-metrics/parquet_records_per_dataset.csv')
+write.csv((pq_n_records %>% arrange(desc(n_records))), './dashboards/participants-and-devices/rendered-dfs/parquet_records_per_dataset.csv')
 ```
 
 <!-- ### Average number of days of data per participant -->
@@ -352,7 +342,7 @@ pq_pids_by_fitbit_devices <-
   summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
   arrange(desc(n_participants))
 pq_pids_by_fitbit_devices
-write.csv(pq_pids_by_fitbit_devices, './rendered_dfs/parquet-metrics/parquet_pids_by_fitbit_devices.csv')
+write.csv(pq_pids_by_fitbit_devices, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_fitbit_devices.csv')
 ```
 
 ### Google Fit
@@ -367,7 +357,7 @@ pq_pids_by_googlefit <-
   rename(DeviceModel=OriginalDataSourceDeviceModel,
          DeviceType=OriginalDataSourceDeviceType)
 pq_pids_by_googlefit
-write.csv(pq_pids_by_googlefit, './rendered_dfs/parquet-metrics/parquet_pids_by_googlefit.csv')
+write.csv(pq_pids_by_googlefit, './dashboards/participants-and-devices/rendered-dfs/parquet_pids_by_googlefit.csv')
 ```
 
 ### HealthKit
@@ -382,7 +372,7 @@ pq_large_pids_by_hk <-
   arrange(desc(n_participants)) %>% 
   ungroup()
 # pq_large_pids_by_hk
-write.csv(pq_large_pids_by_hk, './rendered_dfs/parquet-metrics/parquet_large_pids_by_hk.csv')
+write.csv(pq_large_pids_by_hk, './dashboards/participants-and-devices/rendered-dfs/parquet_large_pids_by_hk.csv')
 ```
 
 ```{r}
@@ -406,7 +396,7 @@ pq_filtered_pids_by_hk <-
   arrange(desc(n_participants)) %>% 
   ungroup()
 pq_filtered_pids_by_hk
-write.csv(pq_filtered_pids_by_hk, './rendered_dfs/parquet-metrics/parquet_filtered_pids_by_hk.csv')
+write.csv(pq_filtered_pids_by_hk, './dashboards/participants-and-devices/rendered-dfs/parquet_filtered_pids_by_hk.csv')
 ```
 
 :::
@@ -422,7 +412,7 @@ pq_n_devices_per_participant <-
   arrange(n_devices_per_participant, .by_group = T) %>% 
   select(dataset, everything())
 pq_n_devices_per_participant
-write.csv(pq_n_devices_per_participant, './rendered_dfs/parquet-metrics/parquet_n_devices_per_participant.csv')
+write.csv(pq_n_devices_per_participant, './dashboards/participants-and-devices/rendered-dfs/parquet_n_devices_per_participant.csv')
 ```
 
 ### Number of Participants Without Device Data Found in Non-Device Files
@@ -445,7 +435,7 @@ pq_device_pids_mismatch_fitbit <-
     )
   )
 pq_device_pids_mismatch_fitbit
-write.csv(pq_device_pids_mismatch_fitbit, './rendered_dfs/parquet-metrics/parquet_device_pids_mismatch_fitbit.csv')
+write.csv(pq_device_pids_mismatch_fitbit, './dashboards/participants-and-devices/rendered-dfs/parquet_device_pids_mismatch_fitbit.csv')
 ```
 :::
 
@@ -475,10 +465,10 @@ curr_state[3, 5] <- curr_state[3, 1] + curr_state[3, 2] + curr_state[3, 3] + cur
 
 curr_state <- curr_state %>% as.data.frame()
 curr_state
-write.csv(curr_state, './rendered_dfs/parquet-metrics/current_state_of_data.csv')
+write.csv(curr_state, './dashboards/participants-and-devices/rendered-dfs/current_state_of_data.csv')
 ```
 
-### Code used 
+## Code used 
 ```{r provenance, echo=FALSE, results='asis'}
 this_file_path <- "dashboards/participants-and-devices/participants-and-devices.qmd"
 
