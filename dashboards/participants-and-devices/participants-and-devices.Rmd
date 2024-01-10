@@ -13,6 +13,8 @@ output:
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
 knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(fig.height = 8)
+knitr::opts_chunk$set(fig.width = 15)
 ```
 
 ```{r libraries and archive version, include=FALSE, warning=FALSE, message=FALSE}
@@ -45,7 +47,7 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn53128272"
+DASHBOARD_FOLDER_SYNID <- "syn53216321"
 FOLDER_NAME <- "Participants and Devices"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
