@@ -12,7 +12,7 @@ output:
 
 ```{r setup, include=FALSE}
 knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
-knitr::opts_knit$set(echo = FALSE)
+knitr::opts_chunk$set(echo = FALSE)
 ```
 
 ```{r libraries and archive version, include=FALSE, warning=FALSE, message=FALSE}
