@@ -355,4 +355,17 @@ write.csv(insights, './dashboards/fitbit-dailydata-metrics/rendered_dfs/insights
 write.csv(fitbit_data_metrics, './dashboards/fitbit-dailydata-metrics/rendered_dfs/fitbit_dailydatadata_metrics.csv')
 ```
 
+## Code used 
+```{r provenance, echo=FALSE, results='asis'}
+this_file_path <- "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd"
+
+latest_file_commit <- 
+  gh::gh("/repos/:owner/:repo/commits", 
+         owner = "pranavanba", 
+         repo = "RECOVER-MHDR-Analysis", 
+         path = this_file_path)[[1]]$commit$url %>% 
+  {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+
+cat("[GitHub Code](", latest_file_commit, ")")
+```
 
