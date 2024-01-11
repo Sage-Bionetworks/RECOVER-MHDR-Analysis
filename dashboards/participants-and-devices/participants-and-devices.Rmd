@@ -442,8 +442,8 @@ A record is a single row in a parquet dataset (after removal of duplicate data)
 
 ```{r count records dataframe, echo=FALSE}
 pq_n_records <- tibble()
-for (dir in list.dirs(paste0('./parquet/', ARCHIVE_VERSION, '/'), recursive = F)) {
-  rows <- open_dataset(dir) %>% nrow()
+for (dir in dataset_paths) {
+  rows <- open_dataset(s3$path(dir)) %>% nrow()
   name <- basename(dir)
   current <- tibble(dataset = name, n_records = rows)
   pq_n_records <- bind_rows(pq_n_records, current)
@@ -737,7 +737,9 @@ write.csv(curr_state,
           row.names = T)
 ```
 
+
 ## Code used 
+
 ```{r provenance, echo=FALSE, results='asis'}
 this_file_path <- "dashboards/participants-and-devices/participants-and-devices.Rmd"
 
