@@ -91,9 +91,6 @@ for (dataset in dataset_list) {
 
 
 ```{r open datasets, include=FALSE}
-dataset_path <- valid_paths[[9]]
-parquet_dataset_df <- arrow::open_dataset(s3$path(dataset_path)) %>% collect()
-
 enrolled <- 
   arrow::open_dataset(
     s3$path(
