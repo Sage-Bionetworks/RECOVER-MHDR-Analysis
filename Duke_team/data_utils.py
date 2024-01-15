@@ -192,5 +192,7 @@ def adjust_enroll_time_form(df_enrolled):
     for i in range(len(df_enrolled)):
         df_enrolled.loc[i, 'EnrollmentDate'] = df_enrolled['EnrollmentDate'][i][:-1]
 
+    return df_enrolled
+
     
     
