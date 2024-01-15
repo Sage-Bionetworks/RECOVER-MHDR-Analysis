@@ -107,25 +107,51 @@ def get_sleep_date(df, col_name_1, col_name_2, new_col):
         row[new_col] = pd.to_datetime(row[col_name_2])
     return df
 
-def filter_fitbit_daily(fitbit_daily, enrolledparticipants):
+def filter_fitbit_daily(df, df_enrolled, df_devices):
+    # Read in dataset_enrolledparticipants and save it as enrolledparticipants
+    enrolledparticipants = df_enrolled
+    
+    # Read in dataset_fitbitdailydata and save it as fitbit_daily
+    fitbit_daily = df
+    
+    # Read in dataset_fitbitdevices and save it as fitbit_devices
+    fitbit_devices = df_devices
+    
     # Subset fitbit daily data based on the definition of the start/end date
     ID_daily = fitbit_daily['ParticipantIdentifier'].unique()
     fitbit_daily['Date2'] = pd.to_datetime(fitbit_daily['Date'])
     new2_fitbit_daily = pd.DataFrame()
-
+    
     for ID in ID_daily:
         enrollment_date = pd.to_datetime(enrolledparticipants.loc[enrolledparticipants['ParticipantIdentifier'] == ID, 'EnrollmentDate'].values[0])
         tmp_daily = fitbit_daily.loc[(fitbit_daily['ParticipantIdentifier'] == ID) & (fitbit_daily['Date2'] >= enrollment_date)].sort_values('Date2')
         row_index = np.where(tmp_daily['HeartRateIntradayMinuteCount'] != 0)[0]
         
-    if len(row_index) > 0:
-        data2 = tmp_daily.iloc[row_index[0]:row_index[-1] + 1]
-    else:
-        data2 = pd.DataFrame()
+        if len(row_index) > 0:
+            data2 = tmp_daily.iloc[row_index[0]:row_index[-1] + 1]
+        else:
+            data2 = pd.DataFrame()
         
-    new2_fitbit_daily = pd.concat([new2_fitbit_daily, data2])
+        new2_fitbit_daily = pd.concat([new2_fitbit_daily, data2])
+    
+    # Label participants who only used Sense 2 and/or Charge 5 during the study
+    ID_devices = fitbit_devices['ParticipantIdentifier'].unique()
+    num_of_devices = []  # get the number of devices for each participant
+    enrolledparticipants['onlyS2C5'] = 0  # dummy variable: 1 = only used Sense 2 and/or Charge 5
+    
+    for ID in ID_devices:
+        device_info = fitbit_devices.loc[fitbit_devices['ParticipantIdentifier'] == ID, 'Device'].unique()
+        num_of_devices.append(len(device_info))
+        
+        if len(device_info) == np.sum(np.isin(device_info, ['Sense 2', 'Charge 5'])):
+            enrolledparticipants.loc[enrolledparticipants['ParticipantIdentifier'] == ID, 'onlyS2C5'] = 1
+    
+    ID_onlyS2C5 = enrolledparticipants.loc[enrolledparticipants['onlyS2C5'] == 1, 'ParticipantIdentifier']
 
-    return new2_fitbit_daily
+    print("new2_fitbit_daily number is " + str(len(new2_fitbit_daily['ParticipantIdentifier'].unique())))
+    print("onlyS2C5 number is " + str(len(ID_onlyS2C5)))
+
+    return new2_fitbit_daily, ID_onlyS2C5
 
 def filter_(fitbit_daily, enrolledparticipants):
     # Subset fitbit daily data based on the definition of the start/end date
