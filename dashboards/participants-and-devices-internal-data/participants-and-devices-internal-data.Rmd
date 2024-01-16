@@ -220,10 +220,10 @@ all_participants_by_dataset <-
        mutate(dataset = 'enrolledparticipants')),
     (enrolled_symptoms %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'enrolledparticipants')),
+       mutate(dataset = 'symptoms')),
     (enrolled_treatments %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'enrolledparticipants')),
+       mutate(dataset = 'symptoms')),
     (fitbit_actlogs %>% 
        select(ParticipantIdentifier) %>% 
        mutate(dataset = 'fitbit')),
@@ -267,7 +267,7 @@ all_participants_by_dataset <-
        mutate(dataset = 'healthkit')),
     (symptomlog %>% 
       select(ParticipantIdentifier) %>% 
-      mutate(dataset = 'symptomlog'))) %>% 
+      mutate(dataset = 'symptoms'))) %>% 
   group_by(dataset, ParticipantIdentifier) %>% 
   distinct() %>% 
   ungroup()
