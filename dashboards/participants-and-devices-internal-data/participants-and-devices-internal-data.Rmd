@@ -581,6 +581,12 @@ write.csv(
   glue::glue('./dashboards/participants-and-devices-internal-data/rendered-dfs/parquet_pids_by_googlefit.csv'),
   row.names = F)
 
+pq_pids_by_googlefit_device_type <- 
+  pq_pids_by_googlefit %>% 
+  ungroup() %>% 
+  group_by(DeviceType) %>% 
+  summarize(n_participants = sum(n_participants))
+
 tmp2 <- 
   pq_pids_by_googlefit_device_type %>% 
   ggpubr::ggbarplot(x = "DeviceType",
