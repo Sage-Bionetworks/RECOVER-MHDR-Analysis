@@ -443,7 +443,16 @@ write.csv(
   row.names = F)
 ```
 
-```{r Count unique participants in enrolled_symptoms vs symptomlog }
+```{r Count of unique participants figures in single image, echo=FALSE}
+
+ggpubr::ggarrange(tmp1, tmp2, tmp3, ncol = 3, nrow = 1)
+
+rm(tmp1, tmp2, tmp3)
+```
+
+### Number of Participants Reporting Symptoms
+
+```{r Count unique participants in datasets with symptom data}
 
 symptoms_participants <- 
   list(
@@ -455,7 +464,7 @@ symptoms_participants <-
         filter(dataset=="symptomlog") %>% 
         pull(ParticipantIdentifier)))
 
-tmp4 <- 
+tmp1 <- 
   UpSetR::upset(
     UpSetR::fromList(symptoms_participants), 
     order.by = "freq",
@@ -467,15 +476,16 @@ tmp4 <-
 
 ```
 
-```{r Count of unique participants figures in single image, echo=FALSE}
+```{r}
 
-ggpubr::ggarrange(tmp1, tmp2, tmp3, ncol = 3, nrow = 1)
-tmp4
+tmp1
 grid::grid.text("# of Unique Participants Reporting Symptoms",
                 x = 0.6,
                 y = 0.99,
                 gp = grid::gpar(fontsize = 15))
-rm(tmp1, tmp2, tmp3, tmp4)
+
+rm(tmp1)
+
 ```
 
 ```{r, echo=FALSE, include=FALSE}
