@@ -766,7 +766,7 @@ pq_n_devices_per_participant %>%
 
 ### Number of Participants Without Device Data Found in Non-Device Files {.tabset}
 
-E.g. N participant IDs were found in the 'fitbit_activitylogs' dataset but not in the 'fitbit_devices' dataset, meaning that device data was missing for those N participants' data in the 'fitbit_activitylogs' dataset. I.e., data for N participants in dataset X are missing associated device data.
+E.g. `N` participant IDs were found in the `fitbit_activitylogs` dataset but not in the `fitbit_devices` dataset, meaning that device data was missing for those `N` participants' data in the `fitbit_activitylogs` dataset. I.e., `N` participants in dataset `X` are missing associated device data.
 
 #### Fitbit
 
