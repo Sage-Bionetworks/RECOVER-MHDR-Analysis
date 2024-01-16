@@ -15,6 +15,7 @@ knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
 knitr::opts_chunk$set(fig.height = 8)
 knitr::opts_chunk$set(fig.width = 15)
+knitr::opts_chunk$set(warning = FALSE)
 ```
 
 ```{r libraries and archive version, include=FALSE, warning=FALSE, message=FALSE}
@@ -151,7 +152,9 @@ days_present_nonzero_per_participant_hr_df <-
   days_present_nonzero_per_participant(fitbitdailydata, "HeartRateIntradayMinuteCount")
 
 kd <- density(days_present_nonzero_per_participant_hr_df$days_present_nonzero, bw = "SJ")
-plot(kd, main = "Number of Days of Data per Participant", sub = "HeartRate: HeartRateIntradayMinuteCount")
+plot(kd, 
+     main = "Number of Days of Data per Participant", 
+     sub = "HeartRate: HeartRateIntradayMinuteCount != 0")
 polygon(kd, col='lightblue', border='black')
 
 wear_time_enrollment_df_hr <- 
