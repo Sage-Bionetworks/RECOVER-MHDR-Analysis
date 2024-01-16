@@ -416,6 +416,7 @@ write.csv(
 ```
 
 <!-- ### Contributing to Multiple Datasets -->
+
 ```{r count participants contributing to multiple datasets, echo=FALSE}
 pq_pids_multiple_datasets <- 
   all_participants_by_dataset %>% 
@@ -547,8 +548,6 @@ pq_pids_by_fitbit_devices %>%
 </details>
 
 #### Google Fit
-
-##### All Unique Devices
 
 ```{r unique devices google fit viz, echo=FALSE}
 pq_pids_by_googlefit <- 
@@ -800,7 +799,6 @@ cat("[GitHub Code](", latest_file_commit, ")")
 synapseclient <- reticulate::import("synapseclient")
 syn_temp <- synapseclient$Synapse()
 syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
-
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
