@@ -359,7 +359,7 @@ mismatch_pids_fitbit <-
 
 ## Count of Unique Participants {.tabset}
 
-### By Cohort
+<!-- ### By Cohort -->
 
 ```{r count unique participants by cohort, echo=FALSE}
 pq_pids_by_cohort <- 
@@ -371,13 +371,15 @@ pq_pids_by_cohort <-
   )) %>%
   summarise(n_participants = n_distinct(ParticipantIdentifier))
 
-pq_pids_by_cohort %>% 
+tmp1 <- 
+  pq_pids_by_cohort %>% 
   arrange(desc(n_participants)) %>% 
   ggpubr::ggbarplot(x = "cohort",
                     y = "n_participants", 
                     label = TRUE, 
                     color = "grey25", 
-                    fill = "grey25") %>% 
+                    fill = "grey25",
+                    title = "By Cohort") %>% 
   ggpar(legend = "none")
 
 write.csv(
@@ -386,7 +388,7 @@ write.csv(
   row.names = F)
 ```
 
-### Per Dataset
+<!-- ### Per Dataset -->
 
 ```{r count unique participants by dataset, echo=FALSE}
 pq_pids_by_dataset <- 
@@ -395,14 +397,17 @@ pq_pids_by_dataset <-
   summarise(n_participants = n_distinct(ParticipantIdentifier))
 pq_pids_by_dataset <- pq_pids_by_dataset[match(c("fitbit", "healthkit", "googlefit", "symptomlog", "enrolledparticipants"), pq_pids_by_dataset$dataset), ]
 
-pq_pids_by_dataset %>% 
+tmp2 <- 
+  pq_pids_by_dataset %>% 
   arrange(desc(n_participants)) %>% 
   ggpubr::ggbarplot(x = "dataset", 
                     y = "n_participants", 
                     label = TRUE,
                     color = "grey25", 
-                    fill = "grey25") %>% 
-  ggpar(legend = "none")
+                    fill = "grey25",
+                    title = "Per Dataset") %>% 
+  ggpar(legend = "none") + 
+  rotate_x_text(45)
 
 write.csv(
   pq_pids_by_dataset, 
@@ -410,7 +415,7 @@ write.csv(
   row.names = F)
 ```
 
-### Contributing to Multiple Datasets
+<!-- ### Contributing to Multiple Datasets -->
 ```{r count participants contributing to multiple datasets, echo=FALSE}
 pq_pids_multiple_datasets <- 
   all_participants_by_dataset %>% 
@@ -419,20 +424,27 @@ pq_pids_multiple_datasets <-
   group_by(n_datasets_contributing_to) %>%
   summarise(n_participants = n())
 
-pq_pids_multiple_datasets %>% 
+tmp3 <- 
+  pq_pids_multiple_datasets %>% 
   arrange(desc(n_participants)) %>% 
   mutate(n_datasets_contributing_to = as.factor(n_datasets_contributing_to)) %>% 
   ggpubr::ggbarplot(x = "n_datasets_contributing_to", 
                     y = "n_participants",
                     label = TRUE,
                     color = "grey25", 
-                    fill = "grey25") %>% 
+                    fill = "grey25",
+                    title = "Contributing to Multiple Datasets") %>% 
   ggpar(legend = "none")
 
 write.csv(
   pq_pids_multiple_datasets,
   glue::glue('./dashboards/participants-and-devices-internal-data/rendered-dfs/parquet_pids_multiple_datasets.csv'),
   row.names = F)
+```
+
+```{r Count of Unique Participants plots in single figure, echo=FALSE}
+ggpubr::ggarrange(tmp1, tmp2, tmp3, ncol = 3, nrow = 1)
+rm(tmp1, tmp2, tmp3)
 ```
 
 
@@ -465,7 +477,7 @@ pq_n_records %>%
                     fill = "grey25", 
                     title = "Dataset Record Count") %>% 
   ggpar(legend = "none", 
-        rotate = T, subtitle = "For n_records > 75th percentile")
+        rotate = T, subtitle = "For n_records > 75th percentile of n_records")
 
 write.csv(
   (pq_n_records %>% arrange(desc(n_records))),
@@ -723,7 +735,8 @@ pq_device_pids_mismatch_fitbit %>%
                     y = "n_participants",
                     label = T,
                     fill = "grey25",
-                    color = "grey25")
+                    color = "grey25",
+                    title = "Number of Participants Without Device Data Found in Non-Device Files")
 
 write.csv(
   pq_device_pids_mismatch_fitbit,
