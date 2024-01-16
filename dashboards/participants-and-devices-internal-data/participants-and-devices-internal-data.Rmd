@@ -220,10 +220,10 @@ all_participants_by_dataset <-
        mutate(dataset = 'enrolledparticipants')),
     (enrolled_symptoms %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'symptoms')),
+       mutate(dataset = 'enrolledparticipants')),
     (enrolled_treatments %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'symptoms')),
+       mutate(dataset = 'enrolledparticipants')),
     (fitbit_actlogs %>% 
        select(ParticipantIdentifier) %>% 
        mutate(dataset = 'fitbit')),
@@ -267,7 +267,7 @@ all_participants_by_dataset <-
        mutate(dataset = 'healthkit')),
     (symptomlog %>% 
       select(ParticipantIdentifier) %>% 
-      mutate(dataset = 'symptoms'))) %>% 
+      mutate(dataset = 'symptomlog'))) %>% 
   group_by(dataset, ParticipantIdentifier) %>% 
   distinct() %>% 
   ungroup()
@@ -443,11 +443,50 @@ write.csv(
   row.names = F)
 ```
 
-```{r Count of Unique Participants plots in single figure, echo=FALSE}
-ggpubr::ggarrange(tmp1, tmp2, tmp3, ncol = 3, nrow = 1)
-rm(tmp1, tmp2, tmp3)
+```{r Count unique participants in enrolled_symptoms vs symptomlog }
+
+symptoms_participants <- 
+  list(
+    enrolledparticipants_symptoms = (
+      enrolled_symptoms %>% 
+        pull(ParticipantIdentifier)),
+    symptomlog = (
+      all_participants_by_dataset %>% 
+        filter(dataset=="symptomlog") %>% 
+        pull(ParticipantIdentifier)))
+
+tmp4 <- 
+  UpSetR::upset(
+    UpSetR::fromList(symptoms_participants), 
+    order.by = "freq",
+    mainbar.y.label = "# of Unique Participants",
+    sets.x.label = "# of Unique Participants",
+    point.size = 3.5,
+    line.size = 2,
+    text.scale = c(2, 2, 1.75, 2, 2, 2))
+
 ```
 
+```{r Count of unique participants figures in single image, echo=FALSE}
+
+ggpubr::ggarrange(tmp1, tmp2, tmp3, ncol = 3, nrow = 1)
+tmp4
+grid::grid.text("# of Unique Participants Reporting Symptoms",
+                x = 0.6,
+                y = 0.99,
+                gp = grid::gpar(fontsize = 15))
+rm(tmp1, tmp2, tmp3, tmp4)
+```
+
+```{r, echo=FALSE, include=FALSE}
+n_participants_reporting_symptoms <- 
+  bind_rows(
+    (enrolled_symptoms %>% select(ParticipantIdentifier)), 
+    (symptomlog %>% select(ParticipantIdentifier))) %>% 
+  n_distinct()
+```
+
+*The total number of unique participants reporting symptoms in datasets containing symptom data (`enrolledparticipants_symptoms`, `symptomlog`) is `n_participants_reporting_symptoms`. This is represented by the sum of the intersection sizes (bars) in the figure above.*
 
 ## Count of Records
 
