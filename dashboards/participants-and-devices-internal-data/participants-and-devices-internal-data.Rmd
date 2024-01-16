@@ -486,7 +486,7 @@ n_participants_reporting_symptoms <-
   n_distinct()
 ```
 
-*The total number of unique participants reporting symptoms in datasets containing symptom data (`enrolledparticipants_symptoms`, `symptomlog`) is `n_participants_reporting_symptoms`. This is represented by the sum of the intersection sizes (bars) in the figure above.*
+*The total number of unique participants reporting symptoms in datasets containing symptom data (`enrolledparticipants_symptoms`, `symptomlog`) is `r n_participants_reporting_symptoms`. This is represented by the sum of the intersection sizes (bars) in the figure above.*
 
 ## Count of Records
 
