@@ -536,6 +536,8 @@ pq_pids_by_fitbit_devices %>%
 
 #### Google Fit
 
+##### All Unique Devices
+
 ```{r unique devices google fit viz, echo=FALSE}
 pq_pids_by_googlefit <- 
   googlefit %>% 
@@ -546,7 +548,9 @@ pq_pids_by_googlefit <-
   rename(DeviceModel=OriginalDataSourceDeviceModel,
          DeviceType=OriginalDataSourceDeviceType)
 
-pq_pids_by_googlefit %>% 
+tmp1 <- 
+  pq_pids_by_googlefit %>% 
+  filter(!is.na(DeviceModel)) %>% 
   ggpubr::ggbarplot(x = "DeviceModel",
                     y = "n_participants",
                     top = 5,
@@ -555,14 +559,29 @@ pq_pids_by_googlefit %>%
                     # palette = "Paired",
                     # position = position_dodge(0.9)
                     title = "Unique Device Count - Google Fit") %>%
-  ggpubr::ggpar(rotate = T, 
+  ggpubr::ggpar(rotate = F, 
                 # font.ytickslab = 8,
-                subtitle = "For top 5 values of n_participants")
+                subtitle = "For top 5 values of n_participants, excluding NA values") + 
+  ggplot2::scale_y_continuous(
+    breaks = get_breaks(by = 3, from = 0))
 
 write.csv(
   pq_pids_by_googlefit, 
   glue::glue('./dashboards/participants-and-devices-internal-data/rendered-dfs/parquet_pids_by_googlefit.csv'),
   row.names = F)
+
+tmp2 <- 
+  pq_pids_by_googlefit_device_type %>% 
+  ggpubr::ggbarplot(x = "DeviceType",
+                    y = "n_participants",
+                    fill = "grey25",
+                    color = "grey25",
+                    label = TRUE,
+                    title = "Unique Device Types - Google Fit")
+
+ggpubr::ggarrange(tmp1, tmp2)
+
+rm(tmp1, tmp2)
 ```
 
 <details>
