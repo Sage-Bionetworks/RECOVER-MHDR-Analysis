@@ -91,7 +91,7 @@ enrolledparticipants <-
   collect()
 ```
 
-```{r functions, include=FALSE}
+```{r helper functions, include=FALSE}
 num_records_total <- function(df, measure) {
   df %>% 
     select(all_of(measure)) %>% 
@@ -147,6 +147,8 @@ avg_days_present_nonzero <- function(df, col) {
 }
 ```
 
+## Heart Rate
+
 ```{r heart rate calculations}
 days_present_nonzero_per_participant_hr_df <- 
   days_present_nonzero_per_participant(fitbitdailydata, "HeartRateIntradayMinuteCount")
@@ -155,8 +157,13 @@ kd <-
   hist(
     days_present_nonzero_per_participant_hr_df$days_present_nonzero, 
     breaks = seq(0, 1100, by = 50),
-    plot = FALSE
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Days of Non-Zero Data per Participant",
+    sub = "HeartRateIntradayMinuteCount"
   )
+axis(1, at = seq(0, 1100, by = 100))
 
 # days_present_nonzero_per_participant_hr_df %>%
 #   ggpubr::gghistogram(x = "days_present_nonzero",
@@ -236,8 +243,9 @@ insights_hr <-
     )
 ```
 
+## Steps (Activity)
+
 ```{r activity steps calculations}
-# Fitbit Activity steps -------------------------------------------
 days_present_nonzero_per_participant_steps_df <- 
   days_present_nonzero_per_participant(fitbitdailydata, "Steps")
 
@@ -245,8 +253,13 @@ kd3 <-
   hist(
     days_present_nonzero_per_participant_steps_df$days_present_nonzero, 
     breaks = seq(0, 2000, by = 50),
-    plot = FALSE
+    labels = T,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Days of Non-Zero Data per Participant",
+    sub = "Steps"
   )
+axis(1, at = seq(0, 2000, by = 100))
 
 # kd3 <- density(days_present_nonzero_per_participant_steps_df$days_present_nonzero, bw = "SJ")
 # plot(kd3, main = "Number of Days of Data per Participant", sub = "Activity: Steps")
@@ -288,6 +301,8 @@ insights_steps <-
   )
 ```
 
+## SpO2
+
 ```{r spo2 calculations}
 days_present_nonzero_per_participant_spo2_df <- 
   days_present_nonzero_per_participant(fitbitdailydata, "spo2_avg")
@@ -296,8 +311,13 @@ kd5 <-
   hist(
     days_present_nonzero_per_participant_spo2_df$days_present_nonzero, 
     breaks = seq(0, 600, by = 25),
-    plot = FALSE
+    labels = T,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Days of Non-Zero Data per Participant",
+    sub = "SpO2_avg"
   )
+axis(1, at = seq(0, 600, by = 50))
 
 # kd5 <- density(days_present_nonzero_per_participant_spo2_df$days_present_nonzero, bw = "SJ")
 # plot(kd5, main = "Number of Days of Data per Participant", sub = "spo2")
@@ -340,6 +360,8 @@ insights_spo2 <-
 
 ```
 
+## HRV
+
 ```{r hrv calculations}
 days_present_nonzero_per_participant_hrv_df <- days_present_nonzero_per_participant(fitbitdailydata, "hrv")
 
@@ -347,8 +369,13 @@ kd7 <-
   hist(
     days_present_nonzero_per_participant_hrv_df$days_present_nonzero, 
     breaks = seq(0, 800, by = 25),
-    plot = FALSE
+    labels = T,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Days of Non-Zero Data per Participant",
+    sub = "HRV"
   )
+axis(1, at = seq(0, 800, by = 50))
 
 # kd7 <- density(days_present_nonzero_per_participant_hrv_df$days_present_nonzero, bw = "SJ")
 # plot(kd7, main = "Number of Days of Data per Participant", sub = "hrv")
@@ -409,58 +436,6 @@ write.csv(fitbit_dailydata_metrics,
           row.names = F)
 ```
 
-## Number of Days of Non-Zero Data per Participant
-
-```{r Number of Days of Data per Participant figures}
-par(mfrow = c(2, 2))
-
-plot(
-  kd, 
-  breaks = seq(0, 1100, by = 50),
-  labels = TRUE,
-  xlab = "Number of Days",
-  ylab = "Count",
-  main = "Number of Days of Non-Zero Data per Participant",
-  sub = "HeartRateIntradayMinuteCount"
-)
-axis(1, at = seq(0, 1100, by = 100))
-
-plot(
-  kd3,
-  breaks = seq(0, 2000, by = 50),
-  labels = T,
-  xlab = "Number of Days",
-  ylab = "Count",
-  main = "Number of Days of Non-Zero Data per Participant",
-  sub = "Steps"
-)
-axis(1, at = seq(0, 2000, by = 100))
-
-plot(
-  kd5,
-  breaks = seq(0, 600, by = 25),
-  labels = T,
-  xlab = "Number of Days",
-  ylab = "Count",
-  main = "Number of Days of Non-Zero Data per Participant",
-  sub = "SpO2_avg"
-)
-axis(1, at = seq(0, 600, by = 50))
-
-plot(
-  kd7,
-  breaks = seq(0, 800, by = 25),
-  labels = T,
-  xlab = "Number of Days",
-  ylab = "Count",
-  main = "Number of Days of Non-Zero Data per Participant",
-  sub = "HRV"
-)
-axis(1, at = seq(0, 800, by = 50))
-
-```
-
-## Proportion of Number of Days of Data Since Enrollment per Participant
 
 ## Code used 
 
