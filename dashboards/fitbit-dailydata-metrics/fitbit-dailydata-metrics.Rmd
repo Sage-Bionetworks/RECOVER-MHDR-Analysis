@@ -151,11 +151,38 @@ avg_days_present_nonzero <- function(df, col) {
 days_present_nonzero_per_participant_hr_df <- 
   days_present_nonzero_per_participant(fitbitdailydata, "HeartRateIntradayMinuteCount")
 
-kd <- density(days_present_nonzero_per_participant_hr_df$days_present_nonzero, bw = "SJ")
-plot(kd, 
-     main = "Number of Days of Data per Participant", 
-     sub = "HeartRate: HeartRateIntradayMinuteCount != 0")
-polygon(kd, col='lightblue', border='black')
+kd <- 
+  hist(
+    days_present_nonzero_per_participant_hr_df$days_present_nonzero, 
+    breaks = seq(0, 1100, by = 50),
+    labels = TRUE,
+    xlab = "Number of Days of Non-Zero Data",
+    ylab = "Count",
+    main = "Number of Days of Data per Participant"
+  )
+axis(1, at = seq(0, 1100, by = 100))
+
+# days_present_nonzero_per_participant_hr_df %>%
+#   ggpubr::gghistogram(x = "days_present_nonzero",
+#                       y = "count",
+#                       fill = "lightgray",
+#                       xlab = "Number of Days of Non-Zero Data (log10 scale)",
+#                       title = "Number of Days of Data per Participant") +
+#   scale_x_log10()
+# 
+# days_present_nonzero_per_participant_hr_df%>%
+#   ggplot(aes(x=days_present_nonzero)) +
+#   geom_histogram() +
+#   geom_text(aes(label = after_stat(count)), stat = "count", vjust=-1, size=3) +
+#   scale_x_log10() +
+#   labs(x= "Number of Days of Non-Zero Data (log10 scale)",
+#        title = "Number of Days of Data per Participant")
+
+# kd <- density(days_present_nonzero_per_participant_hr_df$days_present_nonzero, bw = "SJ")
+# plot(kd,
+#      main = "Number of Days of Data per Participant",
+#      sub = "HeartRate: HeartRateIntradayMinuteCount != 0")
+# polygon(kd, col='lightblue', border='black')
 
 wear_time_enrollment_df_hr <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, HeartRateIntradayMinuteCount), 
@@ -215,11 +242,23 @@ insights_hr <-
 
 ```{r activity steps calculations}
 # Fitbit Activity steps -------------------------------------------
-days_present_nonzero_per_participant_steps_df <- days_present_nonzero_per_participant(fitbitdailydata, "Steps")
+days_present_nonzero_per_participant_steps_df <- 
+  days_present_nonzero_per_participant(fitbitdailydata, "Steps")
 
-kd3 <- density(days_present_nonzero_per_participant_steps_df$days_present_nonzero, bw = "SJ")
-plot(kd3, main = "Number of Days of Data per Participant", sub = "Activity: Steps")
-polygon(kd3, col='lightblue', border='black')
+kd3 <- 
+  hist(
+    days_present_nonzero_per_participant_steps_df$days_present_nonzero, 
+    breaks = seq(0, 2000, by = 50),
+    labels = T,
+    xlab = "Number of Days of Non-Zero Data",
+    ylab = "Count",
+    main = "Number of Days of Data per Participant"
+  )
+axis(1, at = seq(0, 2000, by = 100))
+
+# kd3 <- density(days_present_nonzero_per_participant_steps_df$days_present_nonzero, bw = "SJ")
+# plot(kd3, main = "Number of Days of Data per Participant", sub = "Activity: Steps")
+# polygon(kd3, col='lightblue', border='black')
 
 days_enrollment_df_steps <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, Steps), 
@@ -258,11 +297,23 @@ insights_steps <-
 ```
 
 ```{r spo2 calculations}
-days_present_nonzero_per_participant_spo2_df <- days_present_nonzero_per_participant(fitbitdailydata, "spo2_avg")
+days_present_nonzero_per_participant_spo2_df <- 
+  days_present_nonzero_per_participant(fitbitdailydata, "spo2_avg")
 
-kd5 <- density(days_present_nonzero_per_participant_spo2_df$days_present_nonzero, bw = "SJ")
-plot(kd5, main = "Number of Days of Data per Participant", sub = "spo2")
-polygon(kd5, col='lightblue', border='black')
+kd5 <- 
+  hist(
+    days_present_nonzero_per_participant_spo2_df$days_present_nonzero, 
+    breaks = seq(0, 600, by=25),
+    labels = T,
+    xlab = "Number of Days of Non-Zero Data",
+    ylab = "Count",
+    main = "Number of Days of Data per Participant"
+  )
+axis(1, at = seq(0, 600, by = 50))
+
+# kd5 <- density(days_present_nonzero_per_participant_spo2_df$days_present_nonzero, bw = "SJ")
+# plot(kd5, main = "Number of Days of Data per Participant", sub = "spo2")
+# polygon(kd5, col='lightblue', border='black')
 
 days_enrollment_df_spo2 <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, spo2_avg), 
@@ -304,9 +355,21 @@ insights_spo2 <-
 ```{r hrv calculations}
 days_present_nonzero_per_participant_hrv_df <- days_present_nonzero_per_participant(fitbitdailydata, "hrv")
 
-kd7 <- density(days_present_nonzero_per_participant_hrv_df$days_present_nonzero, bw = "SJ")
-plot(kd7, main = "Number of Days of Data per Participant", sub = "hrv")
-polygon(kd7, col='lightblue', border='black')
+kd7 <- 
+  hist(
+    days_present_nonzero_per_participant_hrv_df$days_present_nonzero, 
+    breaks = seq(0, 800, by = 25),
+    labels = T,
+    xlab = "Number of Days of Non-Zero Data",
+    ylab = "Count",
+    main = "Number of Days of Data per Participant",
+    xlim = c(0,800),
+  )
+axis(1, at = seq(0, 800, by = 50))
+
+# kd7 <- density(days_present_nonzero_per_participant_hrv_df$days_present_nonzero, bw = "SJ")
+# plot(kd7, main = "Number of Days of Data per Participant", sub = "hrv")
+# polygon(kd7, col='lightblue', border='black')
 
 days_enrollment_df_hrv <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, hrv), 
@@ -354,8 +417,13 @@ fitbit_dailydata_metrics <-
              Average_Days_and_Since_Enrollment = paste(round(insights$avg_days_of_complete_nonzero_data, 1), '(', round(insights$avg_n_days_since_enrollment_all_participants, 1), ')'), 
              Proportion_Days_Present_Since_Enrollment = round(insights$avg_proportion_n_days_since_enrollment_all_participants, 3))
 
-write.csv(insights, paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/insights.csv"))
-write.csv(fitbit_dailydata_metrics, paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/fitbit_dailydata_metrics.csv"))
+write.csv(insights, 
+          paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/insights.csv"), 
+          row.names = F)
+
+write.csv(fitbit_dailydata_metrics, 
+          paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/fitbit_dailydata_metrics.csv"),
+          row.names = F)
 ```
 
 
