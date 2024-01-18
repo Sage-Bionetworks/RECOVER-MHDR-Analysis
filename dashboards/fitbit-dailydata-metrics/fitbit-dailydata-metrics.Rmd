@@ -438,7 +438,7 @@ write.csv(fitbit_dailydata_metrics,
           row.names = F)
 ```
 
-## At a Glance
+### At a Glance
 
 ```{r At a glance, echo=FALSE}
 fitbit_dailydata_metrics %>% 
@@ -487,7 +487,7 @@ insights %>%
                format.args = list(digits = 3))
 ```
 
-## Average Device Wear Time
+### Average Device Wear Time
 
 ```{r insights table avg wear time, echo=FALSE}
 insights %>% 
