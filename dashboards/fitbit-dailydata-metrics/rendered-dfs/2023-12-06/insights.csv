@@ -1,5 +1,5 @@
-"","device","category","measure","n_records","n_complete_records","n_complete_nonzero_records","n_participants_with_complete_records","n_participants_with_complete_nonzero_records","avg_days_of_complete_nonzero_data","avg_n_days_since_enrollment_all_participants","avg_proportion_n_days_since_enrollment_all_participants","avg_total_wear_time_since_enrollment_all_participants","avg_total_wear_time_proportion_since_enrollment_all_participants"
-"1","fitbit","heartrate","HeartRateIntradayMinuteCount",543851,223162,103761,2126,1567,66.2163369495852,55.2759282970551,0.647557794118702,505.96220433145,0.351604519774011
-"2","fitbit","activity","steps",543851,526751,211577,2108,1587,133.31884057971,58.0306905370844,0.680226126919475,NA,NA
-"3","fitbit","spo2","spo2",543851,97965,97965,1392,1392,70.3771551724138,42.9570284049527,0.504350437313988,NA,NA
-"4","fitbit","hrv","hrv",543851,114666,112414,1313,1305,86.1409961685824,43.8651162790698,0.506586612406632,NA,NA
+"device","category","measure","n_records","n_complete_records","n_complete_nonzero_records","n_participants_with_complete_records","n_participants_with_complete_nonzero_records","avg_n_days_of_complete_nonzero_data","avg_n_days_since_enrollment_all_participants","proportion_avg_n_days_since_enrollment_all_participants","avg_total_wear_time_since_enrollment_all_participants","proportion_avg_total_wear_time_since_enrollment_all_participants"
+"fitbit","heartrate","HeartRateIntradayMinuteCount",543851,223162,103761,2126,1567,66.2163369495852,55.2759282970551,0.647557794118702,505.96220433145,0.351604519774011
+"fitbit","activity","steps",543851,526751,211577,2108,1587,133.31884057971,58.0306905370844,0.680226126919475,NA,NA
+"fitbit","spo2","spo2",543851,97965,97965,1392,1392,70.3771551724138,42.9570284049527,0.504350437313988,NA,NA
+"fitbit","hrv","hrv",543851,114666,112414,1313,1305,86.1409961685824,43.8651162790698,0.506586612406632,NA,NA
