@@ -1,0 +1,426 @@
+######################################
+## dependencies
+######################################
+
+library(synapser)
+library(arrow)
+library(tidyverse)
+
+
+######################################
+## utility functions
+######################################
+
+## transform selected numeric variables from character 
+## to numeric values
+CharacterToNumeric <- function(dat,
+                               variable_names) {
+  for (j in variable_names) {
+    dat[, j] <- as.numeric(dat[, j])
+  }
+  
+  return(dat)
+}
+
+
+## transform selected date variables from character 
+## to datetime values
+CharacterToDatetime <- function(dat,
+                                variable_names) {
+  for (j in variable_names) {
+    dat[, j] <- lubridate::as_datetime(dat[, j])
+  }
+  
+  return(dat)
+}
+
+
+Create0vsNACategories <- function(dat,
+                                  variable_name) {
+  n <- nrow(dat)
+  x <- rep(NA, n)
+  idx_0 <- which(dat[, variable_name] == 0)
+  idx_NA <- which(is.na(dat[, variable_name]))
+  idx_not_0_nor_NA <- which(dat[, variable_name] != 0 & 
+                              !is.na(dat[, variable_name]))
+  x[idx_0] <- "0"
+  x[idx_NA] <- "NA"
+  x[idx_not_0_nor_NA] <- "not_0_nor_NA"
+  
+  return(x)
+}
+
+
+MarginalBarplot <- function(dat, var_name) {
+  x <- Create0vsNACategories(dat, var_name)
+  barplot(table(x), main = var_name)
+}
+
+
+Mosaicplot3 <- function(dat, 
+                        var_name_1, 
+                        var_name_2,
+                        cex.axis = 1) {
+  
+  aux1 <- Create0vsNACategories(dat, var_name_1)
+  aux2 <- Create0vsNACategories(dat, var_name_2) 
+  mosaicplot(aux2 ~ aux1, 
+             las = 2,
+             main = "",
+             ylab = var_name_1,
+             xlab = var_name_2,
+             cex.axis = cex.axis,
+             color = TRUE)
+}
+
+
+Mosaicplot2 <- function(dat, 
+                        var_name_1, 
+                        var_name_2,
+                        cex.axis = 1) {
+  aux1 <- dat[, var_name_1]
+  aux1_num <- as.numeric(aux1)
+  aux1[is.na(aux1_num) | aux1_num == 0] <- "0_or_NA"
+  aux1[aux1_num != 0 & !is.na(aux1_num)] <- "not_0_nor_NA"
+  ####
+  aux2 <- dat[, var_name_2]
+  aux2_num <- as.numeric(aux2)
+  aux2[is.na(aux2_num) | aux2_num == 0] <- "0_or_NA"
+  aux2[aux2_num != 0 & !is.na(aux2_num)] <- "not_0_nor_NA"
+  ####
+  mosaicplot(aux2 ~ aux1, 
+             las = 2,
+             main = "",
+             ylab = var_name_1,
+             xlab = var_name_2,
+             cex.axis = cex.axis,
+             color = TRUE)
+}
+
+
+GetMissingDataProportion <- function(dat, variable_names) {
+  n_missing <- apply(dat[, variable_names], 2, function(x) sum(is.na(x)))
+  prop_missing <- n_missing/nrow(dat)
+  
+  return(prop_missing)
+}
+
+
+GetParticipantDeviceInfo <- function(dat_device, dat_activity) {
+  ## create table of participant by device type 
+  tb <- table(dat_device$ParticipantIdentifier, dat_device$Device)
+  tb <- as.data.frame.matrix(tb)
+  tmp <- apply(tb, 1, function(x) sum(x == 0))
+  
+  ## find participants with one single device
+  ids_single <- names(which(tmp == (ncol(tb) - 1)))
+  
+  ## find participants with multiple devices
+  ids_multiple <- names(which(tmp < (ncol(tb) - 1)))
+  
+  ## copy the Device variable to a new Device2 variable and
+  ## assign category "multiple_devices" to any participant
+  ## that has multiple devices
+  dat_device$Device2 <- dat_device$Device
+  dat_device$Device2[dat_device$ParticipantIdentifier %in% ids_multiple] <- "multiple_devices" 
+  
+  ## create data frame of participants and respective devices
+  ids <- unique(dat_device$ParticipantIdentifier)
+  nids <- length(ids)
+  dat <- data.frame(matrix(NA, nids, 2))
+  colnames(dat) <- c("ParticipantIdentifier", "Device")
+  dat[, 1] <- ids
+  for (i in seq(nids)) {
+    aux <- dat_device[dat_device$ParticipantIdentifier == ids[i],]
+    dat[i, 2] <- aux[1, "Device2"]
+  }
+  
+  ## participants that don't have device information
+  ParticipantIdentifier <- setdiff(unique(dat_activity$ParticipantIdentifier), 
+                                   dat$ParticipantIdentifier)
+  Device <- "no_device_info"
+  dat_no_info <- data.frame(ParticipantIdentifier, Device)
+  
+  ## append the data
+  dat <- rbind(dat, dat_no_info)
+  
+  return(dat)
+}
+
+
+############################################
+## load the data
+############################################
+
+synapser::synLogin()
+
+
+ARCHIVE_VERSION <- "2023-12-06"
+
+sts_token <- synapser::synGetStsStorageToken(entity = 'syn52506069',
+                                             permission = 'read_only',
+                                             output_format = 'json')
+
+s3_external <- arrow::S3FileSystem$create(access_key = sts_token$accessKeyId,
+                                          secret_key = sts_token$secretAccessKey,
+                                          session_token = sts_token$sessionToken,
+                                          region="us-east-1")
+
+base_s3_uri <- paste0(sts_token$bucket, "/", sts_token$baseKey,'/',ARCHIVE_VERSION)
+parquet_datasets <- s3_external$GetFileInfo(arrow::FileSelector$create(base_s3_uri, recursive=F))
+
+i <- 0
+valid_paths <- character()
+for (dataset in parquet_datasets) {
+  if (grepl('recover-main-project/main/archive/', dataset$path, perl = T, ignore.case = T)) {
+    i <- i+1
+    cat(i)
+    cat(":", dataset$path, "\n")
+    valid_paths <- c(valid_paths, dataset$path)
+  }
+}
+
+valid_paths
+
+## get enrollment data
+dat1 <- arrow::open_dataset(s3_external$path(valid_paths[[1]])) %>% collect()
+dat1 <- as.data.frame(dat1)
+dim(dat1)
+str(dat1)
+
+## get fitbitactivitylogs data
+dat4 <- arrow::open_dataset(s3_external$path(valid_paths[[4]])) %>% collect()
+dat4 <- as.data.frame(dat4)
+dim(dat4)
+str(dat4)
+
+## get daily activity data
+dat5 <- arrow::open_dataset(s3_external$path(valid_paths[[5]])) %>% collect()
+dat5 <- as.data.frame(dat5)
+dim(dat5)
+str(dat5)
+
+## get devices data
+dat6 <- arrow::open_dataset(s3_external$path(valid_paths[[6]])) %>% collect()
+dat6 <- as.data.frame(dat6)
+dim(dat6)
+str(dat6)
+
+## get sleeplogs data
+dat9 <- arrow::open_dataset(s3_external$path(valid_paths[[9]])) %>% collect()
+dat9 <- as.data.frame(dat9)
+dim(dat9)
+str(dat9)
+
+
+#########################################
+## prepare the data
+#########################################
+
+## transform selected numeric variables from character to numeric values
+
+dat4 <- CharacterToNumeric(dat = dat4,
+                           variable_names = names(dat4)[-c(1:6, 10:13, 30:33, 35)])
+
+dat5 <- CharacterToNumeric(dat = dat5, 
+                           variable_names = names(dat5)[-c(1, 2, 8, 45, 57:61)])
+
+dat9 <- CharacterToNumeric(dat = dat9, 
+                           variable_names = names(dat9)[-c(1, 2, 3, 12, 18, 19, 20, 21, 25:28)])
+
+
+## transform selected date variables from character to datetime values
+
+dat1 <- CharacterToDatetime(dat = dat1,
+                            variable_names = c("EnrollmentDate", "CustomFields_DevicesConnectedDate"))
+
+dat4 <- CharacterToDatetime(dat = dat4,
+                            variable_names = c("StartDate", "EndDate"))
+
+dat5 <- CharacterToDatetime(dat = dat5,
+                            variable_names = "Date")
+
+str(dat1)
+str(dat4)
+str(dat5)
+str(dat6)
+str(dat9)
+
+###################################################
+## get device information
+###################################################
+
+device_info <- GetParticipantDeviceInfo(dat_device = dat6, dat_activity = dat5)
+dim(device_info)
+head(device_info, 10)
+tail(device_info, 10)
+
+sort(table(device_info$Device), decreasing = TRUE)
+
+###################################################
+## looking at associations between "0", "NA",
+## and "not_0_nor_NA" counts
+###################################################
+
+par(mfrow = c(2, 2), mar = c(4, 3, 2, 1), mgp = c(2, 0.75, 0)) 
+MarginalBarplot(dat = dat5, 
+                var_name = "HeartRateIntradayMinuteCount")
+MarginalBarplot(dat = dat5, 
+                var_name = "Steps")
+Mosaicplot3(dat = dat5, 
+            var_name_1 = "HeartRateIntradayMinuteCount", 
+            var_name_2 = "Steps",
+            cex.axis = 1)
+Mosaicplot2(dat = dat5, 
+            var_name_1 = "HeartRateIntradayMinuteCount", 
+            var_name_2 = "Steps",
+            cex.axis = 1)
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0)) 
+
+
+## create new versions of Steps and HeartRateIntradayMinuteCount 
+## variables containing "0" vs "NA" categories
+
+dat5$Steps_c <- Create0vsNACategories(dat = dat5,
+                                      variable_name = "Steps")
+
+dat5$HeartRateIntradayMinuteCount_c <- Create0vsNACategories(dat = dat5,
+                                                             variable_name = "HeartRateIntradayMinuteCount")
+
+## perform some checks
+head(dat5[, c("Steps", "Steps_c")], 10)
+tail(dat5[, c("Steps", "Steps_c")], 10)
+c(sum(is.na(dat5$Steps)), sum(dat5$Steps_c == "NA"))
+boxplot(Steps ~ Steps_c, data = dat5)
+####
+head(dat5[, c("HeartRateIntradayMinuteCount", "HeartRateIntradayMinuteCount_c")], 10)
+tail(dat5[, c("HeartRateIntradayMinuteCount", "HeartRateIntradayMinuteCount_c")], 10)
+c(sum(is.na(dat5$HeartRateIntradayMinuteCount)), sum(dat5$HeartRateIntradayMinuteCount_c == "NA"))
+boxplot(HeartRateIntradayMinuteCount ~ HeartRateIntradayMinuteCount_c, data = dat5)
+
+
+## get indexes of records for which Steps are 0 and 
+## HeartRateIntradayMinuteCount is either 0 or NA
+
+condition1 <- dat5$Steps_c == "0"
+condition2 <- dat5$HeartRateIntradayMinuteCount_c == "0" | dat5$HeartRateIntradayMinuteCount_c == "NA"
+idx <- which(condition1 & condition2)
+length(idx)
+
+par(mfrow = c(1, 2), mar = c(4, 3, 2, 1), mgp = c(2, 0.75, 0)) 
+hist(dat5$Steps, nclass = 300, xlim = c(0, 35000), xlab = "Steps", main = "")
+hist(dat5$Steps[-idx], nclass = 300, xlim = c(0, 35000), xlab = "Steps", main = "")
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0)) 
+
+sum(dat5$Steps[-idx] == 0, na.rm = TRUE)
+sum(dat5$Steps[-idx] < 500, na.rm = TRUE)
+
+## get indexes of records for which Steps are 0 and 
+## HeartRateIntradayMinuteCount is neither 0 nor NA
+condition1 <- dat5$Steps_c == "0"
+condition2 <- dat5$HeartRateIntradayMinuteCount_c == "not_0_nor_NA"
+idx <- which(condition1 & condition2)
+length(idx)
+
+## keep only these dailydata records
+sdat5 <- dat5[idx,]
+
+var_nms <- names(sdat5)[-c(1, 2, 8, 45, 57:63)]
+
+## generate histograms for all variables
+
+#pdf("Rplot.pdf", width = 10, height = 8)
+par(mfrow = c(7, 8), mar = c(4, 3, 2, 1), mgp = c(2, 0.75, 0)) 
+for (i in seq(length(var_nms))) {
+  hist(sdat5[, var_nms[i]], 
+       probability = FALSE, 
+       main = var_nms[i],
+       xlab = "")
+}
+#dev.off()
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
+
+
+
+## get proportion of missing records
+prop_mis <- GetMissingDataProportion(dat = sdat5, variable_names = var_nms)
+
+#pdf("Rplot.pdf", width = 8, height = 12)
+par(mar = c(5, 17, 4, 2) + 0.1, mgp = c(3, 1, 0))
+barplot(prop_mis, horiz = TRUE, las = 2, main = "proportion of missing records")
+#dev.off()
+par(mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
+
+
+sel_var_nms <- c("Calories", 
+                 "Steps", 
+                 "BreathingRate",
+                 "Hrv_DailyRmssd",
+                 "RestingHeartRate",
+                 "SpO2_Avg",
+                 "SpO2_Max",
+                 "SpO2_Min",
+                 "MinutesFairlyActive",
+                 "MinutesLightlyActive",
+                 "MinutesSedentary",
+                 "MinutesVeryActive",
+                 "Distance",
+                 "Elevation",
+                 "Floors",
+                 "HeartRateIntradayMinuteCount")
+
+## generate histograms for selected variables
+#pdf("Rplot.pdf", width = 10, height = 8)
+par(mfrow = c(4, 4), mar = c(4, 3, 2, 1), mgp = c(2, 0.75, 0)) 
+for (i in seq(length(sel_var_nms))) {
+  hist(sdat5[, sel_var_nms[i]], 
+       probability = FALSE, 
+       main = sel_var_nms[i],
+       xlab = "")
+  legend("topright", legend = round(prop_mis[sel_var_nms[i]], 6), 
+         bty = "n", cex = 1.2)
+}
+#dev.off()
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
+
+
+#pdf("Rplot.pdf", width = 8, height = 4)
+par(mfrow = c(1, 2), mar = c(4, 3, 2, 1), mgp = c(2, 0.75, 0))
+hist(sdat5$Distance, 
+     probability = FALSE, 
+     main = "Distance",
+     xlab = "")
+hist(sdat5$Distance, 
+     probability = FALSE, 
+     main = "Distance",
+     xlab = "",
+     nclass = 200)
+#dev.off()
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
+
+
+device_info_sdat5 <- device_info[device_info$ParticipantIdentifier %in% unique(sdat5$ParticipantIdentifier),]
+dim(device_info_sdat5)
+
+## include device information
+sdat5 <- merge(sdat5, device_info_sdat5, by = "ParticipantIdentifier")
+
+
+#pdf("Rplot.pdf", width = 16, height = 8)
+par(mfrow = c(1, 2), mar = c(5, 9, 4, 2) + 0.1, mgp = c(3, 1, 0))
+barplot(table(sdat5$Device), horiz = TRUE, las = 2, 
+        xlab = "number of records", ylab = "",
+        main = "number of records by device (subset)")
+barplot(table(device_info_sdat5$Device), horiz = TRUE, las = 2, 
+        xlab = "number of participants", ylab = "",
+        main = "number of participants by device (subset)")
+#dev.off()
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
+
+
+#pdf("Rplot.pdf", width = 8, height = 6)
+par(mfrow = c(1, 2), mar = c(9, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
+boxplot(Distance ~ Device, data = sdat5, xlab = "", las = 2)
+boxplot(HeartRateIntradayMinuteCount ~ Device, data = sdat5, xlab = "", las = 2)
+#dev.off()
+par(mfrow = c(1, 1), mar = c(5, 4, 4, 2) + 0.1, mgp = c(3, 1, 0))
