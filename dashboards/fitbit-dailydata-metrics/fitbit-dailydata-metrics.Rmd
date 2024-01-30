@@ -139,7 +139,8 @@ days_present_nonzero_per_participant <- function(df, measure) {
     group_by(ParticipantIdentifier) %>% 
     distinct(Date, .keep_all = T) %>% 
     summarise(days_present_nonzero = n()) %>% 
-    ungroup()
+    ungroup() %>% 
+    mutate(log10_days_present_nonzero = log10(days_present_nonzero))
 }
 
 avg_days_present_nonzero <- function(df, col) {
@@ -158,7 +159,7 @@ kd <-
     days_present_nonzero_per_participant_hr_df$days_present_nonzero, 
     breaks = seq(0, 1100, by = 50),
     labels = TRUE,
-    xlab = "Number of Days",
+    xlab = "Log10 Number of Days",
     ylab = "Count",
     main = "Number of Days of Non-Zero Data per Participant: Heart Rate"
   )
@@ -523,7 +524,7 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn53216321"
+DASHBOARD_FOLDER_SYNID <- "syn53122914"
 FOLDER_NAME <- "Fitbit DailyData Metrics"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
