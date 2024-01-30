@@ -154,14 +154,26 @@ avg_days_present_nonzero <- function(df, col) {
 days_present_nonzero_per_participant_hr_df <- 
   days_present_nonzero_per_participant(fitbitdailydata, "HeartRateIntradayMinuteCount")
 
-kd <- 
+# kd <- 
+#   ggoutlier::ggoutlier_hist(
+#     days_present_nonzero_per_participant_hr_df,
+#     var_name = "days_present_nonzero",
+#     cut_off_ceiling = 365,
+#     binwidth = 50,
+#   ) + 
+#   # ggplot(days_present_nonzero_per_participant_hr_df, aes(x = days_present_nonzero)) +
+#   geom_histogram(binwidth = 50, boundary = 0)  # Modify parameters as needed
+# 
+# kd
+
+kd <-
   hist(
-    days_present_nonzero_per_participant_hr_df$days_present_nonzero, 
+    days_present_nonzero_per_participant_hr_df$days_present_nonzero,
     breaks = seq(0, 1100, by = 50),
     labels = TRUE,
-    xlab = "Log10 Number of Days",
+    xlab = "Number of Days",
     ylab = "Count",
-    main = "Number of Days of Non-Zero Data per Participant: Heart Rate"
+    main = "Number of Participants with N Days of Non-Zero Data: Heart Rate"
   )
 axis(1, at = seq(0, 1100, by = 100))
 
