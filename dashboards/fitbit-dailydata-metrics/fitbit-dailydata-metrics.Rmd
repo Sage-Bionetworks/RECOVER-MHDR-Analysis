@@ -207,10 +207,32 @@ wear_time_enrollment_df_hr <-
   drop_na() %>% 
   filter(HeartRateIntradayMinuteCount!=0)
 
+tmpdf <- 
+  wear_time_enrollment_df_hr %>% 
+  group_by(ParticipantIdentifier) %>% 
+  filter(Date >= EnrollmentDate) %>% 
+  mutate(most_recent_date = max(Date)) %>% 
+  mutate(days_contributed = as.numeric(most_recent_date - first(Date) + 1)) %>% 
+  mutate(days_in_study = as.numeric(most_recent_date - EnrollmentDate + 1)) %>% 
+  select(-c(Date, HeartRateIntradayMinuteCount)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Participants with N Days of Non-Zero Data Since Enrollment: Heart Rate"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
 avg_total_wear_time_since_enrollment_per_participant <- 
   wear_time_enrollment_df_hr %>% 
-  filter(Date>=EnrollmentDate) %>% 
   group_by(ParticipantIdentifier) %>% 
+  filter(Date>=EnrollmentDate) %>% 
   mutate(last_date = max(Date)) %>% 
   mutate(days = last_date-EnrollmentDate+1) %>% 
   mutate(n = n()) %>% 
@@ -219,7 +241,7 @@ avg_total_wear_time_since_enrollment_per_participant <-
     avg_wear_time_percent = round((sum(HeartRateIntradayMinuteCount)/as.numeric(first(days)))/1439, 3))
 
 kd2 <- density(avg_total_wear_time_since_enrollment_per_participant$avg_wear_time_percent, bw = "SJ")
-plot(kd2, main = "Average Non-Zero Total Wear Time Percent Since Enrollment: HeartRate")
+plot(kd2, main = "Average Proportion of Non-Zero Total Wear Time Since Enrollment: HeartRate")
 polygon(kd2, col='lightblue', border='black')
 
 days_enrollment_df_hr <- 
@@ -285,6 +307,28 @@ days_enrollment_df_steps <-
   drop_na() %>% 
   filter(Steps!=0)
 
+tmpdf <- 
+  days_enrollment_df_steps %>% 
+  group_by(ParticipantIdentifier) %>% 
+  filter(Date >= EnrollmentDate) %>% 
+  mutate(most_recent_date = max(Date)) %>% 
+  mutate(days_contributed = as.numeric(most_recent_date - first(Date) + 1)) %>% 
+  mutate(days_in_study = as.numeric(most_recent_date - EnrollmentDate + 1)) %>% 
+  select(-c(Date, Steps)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd3.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Participants with N Days of Non-Zero Data Since Enrollment: Steps"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
 proportion_days_since_enrollment_per_participant_steps <-
   days_enrollment_df_steps %>%
   group_by(ParticipantIdentifier) %>%
@@ -342,6 +386,28 @@ days_enrollment_df_spo2 <-
   drop_na() %>% 
   filter(spo2_avg!=0)
 
+tmpdf <- 
+  days_enrollment_df_spo2 %>% 
+  group_by(ParticipantIdentifier) %>% 
+  filter(Date >= EnrollmentDate) %>% 
+  mutate(most_recent_date = max(Date)) %>% 
+  mutate(days_contributed = as.numeric(most_recent_date - first(Date) + 1)) %>% 
+  mutate(days_in_study = as.numeric(most_recent_date - EnrollmentDate + 1)) %>% 
+  select(-c(Date, spo2_avg)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd5.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Participants with N Days of Non-Zero Data Since Enrollment: SpO2"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
 proportion_days_since_enrollment_per_participant_spo2 <-
   days_enrollment_df_spo2 %>%
   group_by(ParticipantIdentifier) %>%
@@ -398,6 +464,28 @@ days_enrollment_df_hrv <-
          EnrollmentDate = as_date(EnrollmentDate)) %>% 
   drop_na() %>% 
   filter(hrv!=0)
+
+tmpdf <- 
+  days_enrollment_df_hrv %>% 
+  group_by(ParticipantIdentifier) %>% 
+  filter(Date >= EnrollmentDate) %>% 
+  mutate(most_recent_date = max(Date)) %>% 
+  mutate(days_contributed = as.numeric(most_recent_date - first(Date) + 1)) %>% 
+  mutate(days_in_study = as.numeric(most_recent_date - EnrollmentDate + 1)) %>% 
+  select(-c(Date, hrv)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd5.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Count",
+    main = "Number of Participants with N Days of Non-Zero Data Since Enrollment: HRV"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
 
 proportion_days_since_enrollment_per_participant_hrv <-
   days_enrollment_df_hrv %>%
@@ -510,6 +598,7 @@ insights %>%
                   "measure", 
                   "avg_total_wear_time_since_enrollment_all_participants", 
                   "proportion_avg_total_wear_time_since_enrollment_all_participants"))) %>% 
+  filter(measure == "HeartRateIntradayMinuteCount") %>% 
   knitr::kable(format = "markdown",
                format.args = list(digits = 3))
 ```
