@@ -204,7 +204,8 @@ wear_time_enrollment_df_hr <-
              y = enrolledparticipants %>% select(ParticipantIdentifier, EnrollmentDate)) %>% 
   mutate(Date = as_date(Date),
          EnrollmentDate = as_date(EnrollmentDate)) %>% 
-  drop_na()
+  drop_na() %>% 
+  filter(HeartRateIntradayMinuteCount!=0)
 
 avg_total_wear_time_since_enrollment_per_participant <- 
   wear_time_enrollment_df_hr %>% 
@@ -218,7 +219,7 @@ avg_total_wear_time_since_enrollment_per_participant <-
     avg_wear_time_percent = round((sum(HeartRateIntradayMinuteCount)/as.numeric(first(days)))/1439, 3))
 
 kd2 <- density(avg_total_wear_time_since_enrollment_per_participant$avg_wear_time_percent, bw = "SJ")
-plot(kd2, main = "Average Total Wear Time Since Enrollment: HeartRate")
+plot(kd2, main = "Average Non-Zero Total Wear Time Percent Since Enrollment: HeartRate")
 polygon(kd2, col='lightblue', border='black')
 
 days_enrollment_df_hr <- 
@@ -268,7 +269,7 @@ kd3 <-
     labels = T,
     xlab = "Number of Days",
     ylab = "Count",
-    main = "Number of Days of Non-Zero Data per Participant: Steps (Activity)"
+    main = "Number of Participants with N Days of Non-Zero Data: Steps (Activity)"
   )
 axis(1, at = seq(0, 2000, by = 100))
 
@@ -293,7 +294,7 @@ proportion_days_since_enrollment_per_participant_steps <-
   mutate(adherence_proportion = n_days/dt)
 
 kd4 <- density(proportion_days_since_enrollment_per_participant_steps$adherence_proportion, bw = "ucv")
-plot(kd4, main = "Proportion of Number of Days of Data Since Enrollment per Participant: Steps (Activity)")
+plot(kd4, main = "Proportion of Number of Days of Non-Zero Data Since Enrollment per Participant: Steps (Activity)")
 polygon(kd4, col='lightblue', border='black')
 
 insights_steps <- 
@@ -321,13 +322,13 @@ days_present_nonzero_per_participant_spo2_df <-
 kd5 <- 
   hist(
     days_present_nonzero_per_participant_spo2_df$days_present_nonzero, 
-    breaks = seq(0, 600, by = 25),
+    breaks = seq(0, 600, by = 50),
     labels = T,
     xlab = "Number of Days",
     ylab = "Count",
-    main = "Number of Days of Non-Zero Data per Participant: SpO2"
+    main = "Number of Participants with N Days of Non-Zero Data: SpO2"
   )
-axis(1, at = seq(0, 600, by = 50))
+axis(1, at = seq(0, 600, by = 100))
 
 # kd5 <- density(days_present_nonzero_per_participant_spo2_df$days_present_nonzero, bw = "SJ")
 # plot(kd5, main = "Number of Days of Data per Participant", sub = "spo2")
@@ -350,7 +351,7 @@ proportion_days_since_enrollment_per_participant_spo2 <-
   mutate(adherence_proportion = n_days/dt)
 
 kd6 <- density(proportion_days_since_enrollment_per_participant_spo2$adherence_proportion, bw = "ucv")
-plot(kd6, main = "Proportion of Number of Days of Data Since Enrollment per Participant: SpO2")
+plot(kd6, main = "Proportion of Number of Days of Non-Zero Data Since Enrollment per Participant: SpO2")
 polygon(kd6, col='lightblue', border='black')
 
 insights_spo2 <- 
@@ -378,13 +379,13 @@ days_present_nonzero_per_participant_hrv_df <- days_present_nonzero_per_particip
 kd7 <- 
   hist(
     days_present_nonzero_per_participant_hrv_df$days_present_nonzero, 
-    breaks = seq(0, 800, by = 25),
+    breaks = seq(0, 800, by = 50),
     labels = T,
     xlab = "Number of Days",
     ylab = "Count",
-    main = "Number of Days of Non-Zero Data per Participant: HRV"
+    main = "Number of Participants with N Days of Non-Zero Data: HRV"
   )
-axis(1, at = seq(0, 800, by = 50))
+axis(1, at = seq(0, 800, by = 100))
 
 # kd7 <- density(days_present_nonzero_per_participant_hrv_df$days_present_nonzero, bw = "SJ")
 # plot(kd7, main = "Number of Days of Data per Participant", sub = "hrv")
@@ -407,7 +408,7 @@ proportion_days_since_enrollment_per_participant_hrv <-
   mutate(adherence_proportion = n_days/dt)
 
 kd8 <- density(proportion_days_since_enrollment_per_participant_hrv$adherence_proportion, bw = "ucv")
-plot(kd8, main = "Proportion of Number of Days of Data Since Enrollment per Participant: HRV")
+plot(kd8, main = "Proportion of Number of Days of Non-Zero Data Since Enrollment per Participant: HRV")
 polygon(kd8, col='lightblue', border='black')
 
 insights_hrv <- 
