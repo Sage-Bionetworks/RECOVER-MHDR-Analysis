@@ -16,15 +16,17 @@
 source('~/recover-s3-synindex/awscli_utils.R')
 source('~/recover-s3-synindex/params.R')
 library(synapser)
+library(synapserutils)
 library(tidyverse)
 unzipFile <- function(file_path_in, target_path_in, file_list_return= TRUE){
   
-  file_path <- c(getwd(),'/temp_aws/main/',file_path_in, sep = '') %>% paste0(collapse = '')
+  file_path <- file_path_in
   
-  target_path <- c(getwd(), target_path_in, file_path_in, '.csv',sep = '') %>% paste0(collapse = '')
+  target_path <- stringr::str_replace(file_path,'temp_aws','temp_folder')
+  target_path <- paste0(target_path,'.csv')
   
-  
-  print(file_path)
+  # print(file_path)
+  # print(target_path)
   
   command_in <- paste0('unzip -l ',file_path,' > ',target_path)
   print(command_in)
@@ -41,7 +43,7 @@ unzipFileSingle <- function(file_path_in,  file_to_extract){
   
   file_path <- c(getwd(),'/',file_path_in, sep = '') %>% paste0(collapse = '')
   
-  file_path <- str_replace(file_path,'temp_folder/','temp_aws/main/')
+  file_path <- str_replace(file_path,'temp_folder/','temp_aws/')
   
   if(grepl('adults',file_path_in)){
     target_path <- 'temp_unzip_location/adults_v1/'
@@ -60,48 +62,35 @@ unzipFileSingle <- function(file_path_in,  file_to_extract){
   
 }
 #############
-# Sync S3 ingress bucket to Local EC2 (First Sync )
-# using prod-creds (with 'read' only permissions) for accessing the ingress bucket 
+# Sync S3 ingress bucket to Local EC2 (using syncFromSynapse)
 #############
 # synapser::synLogin(daemon_acc, daemon_acc_password) # login into Synapse
 synapser::synLogin()
-
-sts_token <- synapser::synGetStsStorageToken(entity = 'syn52293299', # sts enabled destination folder
-                                             permission = 'read_write',  
-                                             output_format = 'json')
-
-# configure the environment with AWS token (this is the aws_profile named 'env-var')
-Sys.setenv('AWS_ACCESS_KEY_ID'=sts_token$accessKeyId,
-           'AWS_SECRET_ACCESS_KEY'=sts_token$secretAccessKey,
-           'AWS_SESSION_TOKEN'=sts_token$sessionToken)
-
-# # access AWS s3 from env set sts token, sts token was requested from Synapse folder above
-# s3SyncToLocal(source_bucket = paste0('s3://', INGRESS_BUCKET,'/'),
-#               local_destination = AWS_DOWNLOAD_LOCATION,
-#               aws_profile = 'env-var')
-
-### Now rename adults\v1 to adults_v1 and vice versa for pediatric.
-### delete test_upload.rtf
+synapserutils::syncFromSynapse('syn51714264',path = '~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_aws')
+# Remove synapse metadata manifest files
+# delete test_upload.rtf
 
 ################
 ## Get names of all files inside zips
 ################
-all_files <- list.files(path = AWS_DOWNLOAD_LOCATION, recursive = T)
-# dir.create('temp_folder')
-# dir.create('temp_folder/adults_v1')
-# dir.create('temp_folder/pediatric_v1')
+all_files <- list.files(path = '~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_aws',
+                        recursive = T, full.names = T)
+# dir.create('~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_folder')
+# dir.create('~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_folder/adults_v1')
+# dir.create('~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_folder/pediatric_v1')
+
 
 for(i in seq(length(all_files))){
-  unzipFile(all_files[i],target_path = '/temp_folder/',file_list_return = T)
+  unzipFile(all_files[i],target_path = '~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_folder/',file_list_return = T)
   print(i)
 }
 
-all_metadata_files <- list.files(path = 'temp_folder', recursive = T)
+all_metadata_files <- list.files(path = '~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_folder/', recursive = T)
 
 json_files_in_zip <- lapply(all_metadata_files, function(file_path){
   print(file_path)
   # Read the entire text file
-  file_path_temp <- paste0('temp_folder/', file_path)
+  file_path_temp <- paste0('~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_folder/', file_path)
   
   file_content <- readLines(file_path_temp)
   
@@ -139,7 +128,14 @@ json_files_in_zip <- lapply(all_metadata_files, function(file_path){
 #############################
 ### Get row counts for each datasetType across all jsons from all zip exports
 #############################
-# dir.create('temp_unzip_location')
+# dir.create('~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/temp_unzip_location')
+setwd('~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/')
+
+# account for correcting wd
+json_files_in_zip <- json_files_in_zip %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(file_path = stringr::str_replace(file_path,'~/RECOVER-MHDR-Analysis/dashboards/RecordCounts/','')) %>% 
+  dplyr::ungroup()
 
 ####
 # EnrolledParticipants dataset record counts
@@ -854,10 +850,6 @@ if(nrow(subset_p)){
     ## read the just unzipped file
     curr_file <- ndjson::stream_in(paste0(target_path, x['Name'])) 
     
-    # curr_file <- data.frame(nrows = nrow(curr_file),
-    #                         file_in = x['file_path'],
-    #                         name_in = x['Name'])
-    
     if(nrow(curr_file)){
       curr_file <- curr_file %>% 
         dplyr::select(HealthKitStatisticKey, ParticipantIdentifier) %>% 
@@ -940,541 +932,9 @@ if(nrow(subset_p)){
   rm(nrows_FitbitSleepLogs)  
 }
 
-#####
-# Get record count per dataset
-#####
-## plot of cumultive data in 
-# plot of data coming in
-# funnel plot of JSONdata -> INternal parquet(archives) -> external parquet(archives)
 
+## final touches
+unlink('temp_unzip_location/adults_v1/', recursive = T)
+unlink('temp_unzip_location/pediatric_v1/', recursive = T)
 
-########
-# Get record count for current internal parquets
-########
-sts_token <- synapser::synGetStsStorageToken(entity = 'syn51406699', # sts enabled destination folder
-                                             permission = 'read_only',   # request a read only token
-                                             output_format = 'json')
-
-s3_external <- arrow::S3FileSystem$create(access_key = sts_token$accessKeyId,
-                                          secret_key = sts_token$secretAccessKey,
-                                          session_token = sts_token$sessionToken,
-                                          region="us-east-1")
-
-base_s3_uri <- paste0(sts_token$bucket, "/", sts_token$baseKey)
-parquet_datasets <- s3_external$GetFileInfo(arrow::FileSelector$create(base_s3_uri, recursive=F))
-
-i <- 0
-valid_paths <- character()
-for (dataset in parquet_datasets) {
-  if (grepl('recover-processed-data/main/parquet/', dataset$path, perl = T, ignore.case = T)) {
-    i <- i+1
-    cat(i)
-    cat(":", dataset$path, "\n")
-    valid_paths <- c(valid_paths, dataset$path)
-  }
-}
-
-valid_paths_df <- valid_paths %>% 
-  as.data.frame() %>% 
-  `colnames<-`('parquet_path') %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(datasetType = str_split(parquet_path,'/')[[1]][4]) %>%
-  dplyr::ungroup() %>% 
-  dplyr::filter(datasetType %in% c('dataset_enrolledparticipants',
-                                   'dataset_fitbitactivitylogs',
-                                   "dataset_fitbitdailydata",
-                                   "dataset_fitbitdevices",
-                                   "dataset_fitbitecg",
-                                   "dataset_fitbitrestingheartrates",
-                                   "dataset_fitbitsleeplogs",
-                                   "dataset_googlefitsamples",
-                                   "dataset_healthkitv2activitysummaries",
-                                   "dataset_healthkitv2electrocardiogram",
-                                   "dataset_healthkitv2heartbeat",
-                                   # "dataset_healthkitv2samples",                          
-                                   "dataset_healthkitv2statistics",
-                                   "dataset_healthkitv2workouts",
-                                   "dataset_symptomlog"))
-
-## Read each dataset, get row count
-dataset_row_count <- lapply(valid_paths_df$parquet_path, function(parquet_path){
-  parquet.df <- arrow::open_dataset(s3_external$path(as.character(parquet_path))) %>% dplyr::collect()
-  
-  parquet.df <- data.frame(nrows = nrow(parquet.df),
-                           dataset_path= parquet_path)
-  
-  return(parquet.df)
-  
-}) %>% data.table::rbindlist(fill = T)
-
-dataset_row_count$dataset_path <- as.character(dataset_row_count$dataset_path)
-
-dataset_row_count_current_internal <- dataset_row_count %>% 
-  dplyr::left_join(valid_paths_df %>% 
-                     dplyr::rename(dataset_path = parquet_path))
-
-write.csv(dataset_row_count_current_internal,'all_nrows_parquet_internal.csv')
-
-########
-# Get record count for latest archive version of external parquets
-# Change archive version
-########
-ARCHIVE_VERSION <- '2024-02-01'
-sts_token <- synapser::synGetStsStorageToken(entity = 'syn52912560', # sts enabled destination folder
-                                             permission = 'read_only',   # request a read only token
-                                             output_format = 'json')
-
-s3_external <- arrow::S3FileSystem$create(access_key = sts_token$accessKeyId,
-                                          secret_key = sts_token$secretAccessKey,
-                                          session_token = sts_token$sessionToken,
-                                          region="us-east-1")
-
-base_s3_uri <- paste0(sts_token$bucket, "/", sts_token$baseKey,'/',ARCHIVE_VERSION)
-parquet_datasets <- s3_external$GetFileInfo(arrow::FileSelector$create(base_s3_uri, recursive=F))
-
-i <- 0
-valid_paths <- character()
-for (dataset in parquet_datasets) {
-  if (grepl('recover-main-project/staging/', dataset$path, perl = T, ignore.case = T)) {
-    i <- i+1
-    cat(i)
-    cat(":", dataset$path, "\n")
-    valid_paths <- c(valid_paths, dataset$path)
-  }
-}
-
-valid_paths_df <- valid_paths %>% 
-  as.data.frame() %>% 
-  `colnames<-`('parquet_path') %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(datasetType = str_split(parquet_path,'/')[[1]][4]) %>%
-  dplyr::ungroup() %>% 
-  dplyr::filter(datasetType %in% c('dataset_enrolledparticipants',
-                                   'dataset_fitbitactivitylogs',
-                                   "dataset_fitbitdailydata",
-                                   "dataset_fitbitdevices",
-                                   "dataset_fitbitrestingheartrates",
-                                   "dataset_fitbitecg",
-                                   "dataset_fitbitsleeplogs",
-                                   "dataset_googlefitsamples",
-                                   "dataset_healthkitv2activitysummaries",
-                                   "dataset_healthkitv2electrocardiogram",
-                                   "dataset_healthkitv2heartbeat",
-                                   # "dataset_healthkitv2samples",                          
-                                   "dataset_healthkitv2statistics",
-                                   "dataset_healthkitv2workouts",
-                                   "dataset_symptomlog"))
-
-## Read each dataset, get row count
-dataset_row_count <- lapply(valid_paths_df$parquet_path, function(parquet_path){
-  parquet.df <- arrow::open_dataset(s3_external$path(as.character(parquet_path))) %>% dplyr::collect()
-  print(as.character(parquet_path))
-  parquet.df <- data.frame(nrows = nrow(parquet.df),
-                           dataset_path= parquet_path)
-  
-  return(parquet.df)
-  
-}) %>% data.table::rbindlist(fill = T)
-
-dataset_row_count$dataset_path <- as.character(dataset_row_count$dataset_path)
-
-dataset_row_count_current_external <- dataset_row_count %>% 
-  dplyr::left_join(valid_paths_df %>% 
-                     dplyr::rename(dataset_path = parquet_path))
-
-write.csv(dataset_row_count_current_external,'all_nrows_parquet_external.csv')
-
-
-############
-## Compare all nrows and build a funnel plot
-############
-### get rows for each dataset in jsons
-
-############# EnrolledParticipants
-
-all_nrows_json <- read.csv('all_nrows.csv', stringsAsFactors = F) %>% 
-  dplyr::select(-X) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_enrolled <- all_nrows_json %>% 
-  dplyr::filter(dataset_type == 'EnrolledParticipants') %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::summarise(nrows = max(nrows))
-
-############# FitbitECG
-
-all_nrows_json <- read.csv('all_nrows_fitbitecg.csv', stringsAsFactors = F) %>% 
-  dplyr::select(-X) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_fitbitecg <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# FitbitDailyData
-
-all_nrows_json <- data.table::fread('all_nrows_fitbitdailydata.csv', stringsAsFactors = F) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_fitbitdailydata <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# FitbitRestingHeartrates
-
-all_nrows_json <- data.table::fread('all_nrows_fitbitrestingheartrates.csv', stringsAsFactors = F) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_fitbitrestingheartrates <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# FitbitSleeplogs
-
-all_nrows_json <- data.table::fread('all_nrows_fitbitsleeplogs.csv', stringsAsFactors = F) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_fitbitsleeplogs <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# FitbitDevices
-
-all_nrows_json <- data.table::fread('all_nrows_fitbitdevices.csv', stringsAsFactors = F) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup() 
-
-all_nrows_json_fitbitdevices <- all_nrows_json %>% 
-  dplyr::select(-V1, -file_in, -name_in) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# FitbitActivityLogs
-
-all_nrows_json <- data.table::fread('all_nrows_fitbitactivitylogs.csv', stringsAsFactors = F) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_fitbitactivitylogs <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# HealthKitV2Heartbeat
-
-all_nrows_json <- data.table::fread('all_nrows_healthkitv2heartbeat.csv', stringsAsFactors = F, header = T) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(deleted = ifelse(grepl('Deleted',name_in),TRUE,FALSE)) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_healthkitv2heartbeat <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type, deleted) %>% 
-  dplyr::count() %>%
-  dplyr::rename(nrows = n) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_healthkitv2heartbeat_deleted <- all_nrows_json_healthkitv2heartbeat %>% 
-  dplyr::filter(deleted) %>% 
-  dplyr::rename(nrows_deleted = nrows)
-
-all_nrows_json_healthkitv2heartbeat_put <- all_nrows_json_healthkitv2heartbeat %>% 
-  dplyr::filter(!deleted) 
-
-all_nrows_json_healthkitv2heartbeat <- all_nrows_json_healthkitv2heartbeat_put %>% 
-  dplyr::left_join(all_nrows_json_healthkitv2heartbeat_deleted %>% 
-                     dplyr::select(-deleted)) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(nrows_nett = ifelse(is.na(nrows_deleted),nrows,nrows-nrows_deleted)) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::select(cohort, dataset_type, nrows = nrows_nett)
-
-
-############# HealthKitV2Workouts
-
-all_nrows_json <- data.table::fread('all_nrows_healthkitv2workouts.csv', stringsAsFactors = F, header = T) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_healthkitv2workouts <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>%
-  dplyr::rename(nrows = n) %>% 
-  dplyr::ungroup()
-
-
-############# HealthKitV2Electrocardiogram
-
-all_nrows_json <- data.table::fread('all_nrows_healthkitv2electrocardiogram.csv', stringsAsFactors = F, header = T) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_healthkitv2electrocardiogram <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>%
-  dplyr::rename(nrows = n) %>% 
-  dplyr::ungroup()
-
-
-############# HealthKitV2ActivitySummaries
-
-all_nrows_json <- data.table::fread('all_nrows_healthkitv2activitysummaries.csv', stringsAsFactors = F, header = T) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_healthkitv2activitysummaries <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>%
-  dplyr::rename(nrows = n) %>% 
-  dplyr::ungroup()
-
-
-############# HealthKitV2Statistics
-
-all_nrows_json <- data.table::fread('all_nrows_healthkitv2statistics.csv', stringsAsFactors = F, header = T) 
-
-temp_aa <- grepl('adults',all_nrows_json$file_in)
-
-temp_aa[temp_aa==TRUE] <- 'adults' # aa is a logical vector inititally
-temp_aa[temp_aa=='FALSE'] <- 'pediatric' # after the previous change it is character now
-
-all_nrows_json$cohort <- temp_aa
-
-all_nrows_json <- all_nrows_json %>% 
-  dplyr::mutate(dataset_type = 'HealthKitV2Statistics') %>% 
-  dplyr::ungroup()
-
-all_nrows_json_healthkitv2statistics <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-############# GoogleFitSamples
-
-all_nrows_json <- data.table::fread('all_nrows_googlefitsamples.csv', stringsAsFactors = F, header = T) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_googlefitsamples <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::summarise(nrows = sum(nrows)) %>% 
-  dplyr::ungroup()
-
-
-############# Symptomlog
-
-all_nrows_json <- data.table::fread('all_nrows_symptomlog.csv', stringsAsFactors = F, header = T) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(name_in, '_')[[1]][1]) %>% 
-  dplyr::mutate(cohort = ifelse(grepl('adults',file_in),'adults','pediatric')) %>% 
-  dplyr::ungroup()
-
-all_nrows_json_symptomlog <- all_nrows_json %>% 
-  dplyr::select(-file_in, -name_in, -V1) %>% 
-  unique() %>% 
-  dplyr::group_by(cohort, dataset_type) %>% 
-  dplyr::count() %>% 
-  dplyr::rename(nrows = n)
-
-
-all_nrows_json_curated <- all_nrows_json_enrolled %>% 
-  dplyr::full_join(all_nrows_json_fitbitactivitylogs) %>%
-  dplyr::full_join(all_nrows_json_fitbitdailydata) %>%
-  dplyr::full_join(all_nrows_json_fitbitdevices) %>%
-  dplyr::full_join(all_nrows_json_fitbitecg) %>%
-  dplyr::full_join(all_nrows_json_fitbitrestingheartrates) %>%
-  dplyr::full_join(all_nrows_json_fitbitsleeplogs) %>%
-  dplyr::full_join(all_nrows_json_healthkitv2activitysummaries) %>%
-  dplyr::full_join(all_nrows_json_healthkitv2electrocardiogram) %>%
-  dplyr::full_join(all_nrows_json_healthkitv2heartbeat) %>%
-  dplyr::full_join(all_nrows_json_healthkitv2statistics) %>%
-  dplyr::full_join(all_nrows_json_healthkitv2workouts) %>%
-  dplyr::full_join(all_nrows_json_googlefitsamples) %>% 
-  dplyr::full_join(all_nrows_json_symptomlog) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = tolower(dataset_type)) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::rename(nrows_json = nrows) %>% 
-  dplyr::group_by(dataset_type) %>% 
-  dplyr::summarise(nrows_JSON = sum(nrows_json)) %>% 
-  dplyr::ungroup()
-
-
-all_nrows_current_internal <- read.csv('all_nrows_parquet_internal.csv', stringsAsFactors = F) %>% 
-  dplyr::select(-X, nrows, dataset_type = datasetType, dataset_path) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(dataset_type,'_')[[1]][2]) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::rename(nrows_internal = nrows)
-
-all_nrows_current_external <- read.csv('all_nrows_parquet_external.csv', stringsAsFactors = F) %>% 
-  dplyr::select(-X, nrows, dataset_type = datasetType, dataset_path) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(dataset_type = stringr::str_split(dataset_type,'_')[[1]][2]) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::rename(nrows_external = nrows)
-
-all_nrows_tally <- all_nrows_json_curated %>% 
-  dplyr::full_join(all_nrows_current_internal %>% dplyr::select(-dataset_path)) %>% 
-  dplyr::full_join(all_nrows_current_external %>% dplyr::select(-dataset_path)) %>% 
-  dplyr::rename(nrows_json=nrows_JSON)
-
-
-write.csv(all_nrows_tally,'all_nrows_tally.csv')
-
-##########
-# Funnel plots from all_nrows_tally
-##########
-library(reshape2)
-
-## healthkit stuff
-dfm <- melt(all_nrows_tally[,c('dataset_type','nrows_json','nrows_internal','nrows_external')],id.vars = 1) %>% 
-  dplyr::filter(grepl('healthkit',dataset_type)) %>% 
-  dplyr::group_by(dataset_type) %>% 
-  dplyr::mutate(value_percent = round(value/max(value)*100,1)) %>% 
-  dplyr::ungroup()
-
-## Percent plot
-ggplot(dfm,aes(x = variable,y = value_percent)) + 
-  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") +
-  geom_text(aes(label=value_percent), vjust=0) +
-  facet_wrap(~dataset_type, scales = 'free') +
-  theme_minimal() +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-## numbers plot
-ggplot(dfm,aes(x = variable,y = value)) + 
-  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") +
-  geom_text(aes(label=value), vjust=0) +
-  facet_wrap(~dataset_type, scales = 'free') +
-  # scale_y_log10()+
-  theme_minimal() +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-#### Fitbit stuff
-dfm <- melt(all_nrows_tally[,c('dataset_type','nrows_json','nrows_internal','nrows_external')],id.vars = 1) %>% 
-  dplyr::filter(grepl('fitbit',dataset_type)) %>% 
-  dplyr::filter(dataset_type %in% c('fitbitactivitylogs','fitbitdevices',
-                                    'fitbitsleeplogs','fitbitrestingheartrates',
-                                    'fitbitdailydata')) %>%
-  dplyr::group_by(dataset_type) %>% 
-  dplyr::mutate(value_percent = round(value/max(value)*100,1)) %>% 
-  dplyr::ungroup()
-
-## Percent plot
-ggplot(dfm,aes(x = variable,y = value_percent)) + 
-  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") +
-  geom_text(aes(label=value_percent), vjust=0) +
-  facet_wrap(~dataset_type, scales = 'free') +
-  theme_minimal() +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-## numbers plot
-ggplot(dfm,aes(x = variable,y = value)) + 
-  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") +
-  geom_text(aes(label=value), vjust=0) +
-  facet_wrap(~dataset_type, scales = 'free') +
-  # scale_y_log10()+
-  theme_minimal() +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-## NON healthkit, NON fitbit
-dfm <- melt(all_nrows_tally[,c('dataset_type','nrows_json','nrows_internal','nrows_external')],id.vars = 1) %>% 
-  dplyr::filter(!grepl('fitbit',dataset_type)) %>% 
-  dplyr::filter(!grepl('healthkit',dataset_type)) %>% 
-  dplyr::group_by(dataset_type) %>% 
-  dplyr::mutate(value_percent = round(value/max(value)*100,1)) %>% 
-  dplyr::ungroup()
-
-## Percent plot
-ggplot(dfm,aes(x = variable,y = value_percent)) + 
-  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") +
-  geom_text(aes(label=value_percent), vjust=0) +
-  facet_wrap(~dataset_type, scales = 'free') +
-  theme_minimal() +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-## numbers plot
-ggplot(dfm,aes(x = variable,y = value)) + 
-  geom_bar(aes(fill = variable),stat = "identity",position = "dodge") +
-  geom_text(aes(label=value), vjust=0) +
-  facet_wrap(~dataset_type, scales = 'free') +
-  # scale_y_log10()+
-  theme_minimal() +
-  theme(axis.title.x=element_blank(),
-        axis.text.x=element_blank(),
-        axis.ticks.x=element_blank())
-
-#######
-subset_all_enrolled <- all_enrolled %>% 
-  # dplyr::filter(!is.na(`CustomFields.EOPReason`)) 
-  dplyr::filter(ParticipantIdentifier == 'RA12303-00128') %>% 
-  dplyr::select(ParticipantIdentifier,TimeZone, UtcOffset,EventDates.LastFitbitTrackerStepsDate) %>% 
-  unique()
-
+setwd('~/RECOVER-MHDR-Analysis/')
