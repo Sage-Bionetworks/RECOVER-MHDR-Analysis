@@ -194,5 +194,9 @@ def adjust_enroll_time_form(df_enrolled):
 
     return df_enrolled
 
+def show_stat_df_sleep(df_sleep, col_names):
+    for col in col_names:
+       print(df_sleep[col].astype(float).describe()) 
+
     
     
