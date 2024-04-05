@@ -109,6 +109,18 @@ fitbit_devices <-
       dataset_paths[grep(".*dataset_fitbitdevices$", dataset_paths)])) %>% 
   collect()
 
+fitbit_ecg <- 
+  arrow::open_dataset(
+    s3$path(
+      dataset_paths[grep(".*dataset_fitbitecg$", dataset_paths)])) %>% 
+  collect()
+
+fitbit_ecg_waveformsamples <- 
+  arrow::open_dataset(
+    s3$path(
+      dataset_paths[grep(".*dataset_fitbitecg_waveformsamples$", dataset_paths)])) %>% 
+  collect()
+
 fitbit_intracomb <- 
   arrow::open_dataset(
     s3$path(
@@ -238,6 +250,9 @@ all_participants_by_dataset <-
        select(ParticipantIdentifier) %>% 
        mutate(dataset = 'fitbit')),
     (fitbit_devices %>% 
+       select(ParticipantIdentifier) %>% 
+       mutate(dataset = 'fitbit')),
+    (fitbit_ecg %>% 
        select(ParticipantIdentifier) %>% 
        mutate(dataset = 'fitbit')),
     (fitbit_intracomb %>%
@@ -376,9 +391,11 @@ pq_pids_by_cohort <-
     startsWith(ParticipantIdentifier, "RP") ~ "Pediatric",
     TRUE ~ "Other"
   )) %>%
-  summarise(n_participants = n_distinct(ParticipantIdentifier))
+  summarise(n_participants = n_distinct(ParticipantIdentifier)) %>% 
+  mutate(pct = round(100*n_participants/sum(n_participants), 2))
 
-pq_pids_by_cohort %>% 
+p1 <- 
+  pq_pids_by_cohort %>% 
   arrange(desc(n_participants)) %>% 
   ggpubr::ggbarplot(x = "cohort",
                     y = "n_participants", 
@@ -386,6 +403,14 @@ pq_pids_by_cohort %>%
                     color = "grey25", 
                     fill = "grey25") %>% 
   ggpar(legend = "none")
+
+p2 <- 
+  pq_pids_by_cohort %>% 
+  ggpie(x = "n_participants",
+        label = paste0(pq_pids_by_cohort$cohort, " (", pq_pids_by_cohort$pct, "%)"),
+        fill = "cohort")
+
+ggarrange(p1, p2, nrow = 1)
 
 write.csv(pq_pids_by_cohort, glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_pids_by_cohort.csv'), row.names = F)
 ```
