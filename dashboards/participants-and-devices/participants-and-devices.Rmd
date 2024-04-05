@@ -30,7 +30,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2023-12-06"
+ARCHIVE_VERSION <- "2024-02-01"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -451,7 +451,8 @@ for (dir in dataset_paths) {
 ```
 
 ```{r record count per dataset viz, echo=FALSE}
-pq_n_records %>% 
+p1 <- 
+  pq_n_records %>% 
   arrange(desc(n_records)) %>% 
   filter(n_records >= quantile(n_records, 0.75)) %>%
   ggpubr::ggbarplot(x = "dataset", 
@@ -464,6 +465,24 @@ pq_n_records %>%
                     title = "Dataset Record Count") %>% 
   ggpar(legend = "none", 
         rotate = T, subtitle = "For n_records > 75th percentile")
+
+p2 <- 
+  pq_n_records %>% 
+  arrange(desc(n_records)) %>% 
+  filter(n_records >= quantile(n_records, 0.75)) %>%
+  filter(dataset!="dataset_fitbitintradaycombined") %>% 
+  ggpubr::ggbarplot(x = "dataset", 
+                    y = "n_records",
+                    # label = F,
+                    # lab.pos = "in",
+                    # lab.hjust = .4,
+                    color = "grey25", 
+                    fill = "grey25", 
+                    title = "Dataset Record Count") %>% 
+  ggpar(legend = "none", 
+        rotate = T, subtitle = "For n_records > 75th percentile; excluding dataset_fitbitintradaycombined")
+
+ggarrange(p1, p2, ncol = 1)
 
 write.csv((pq_n_records %>% arrange(desc(n_records))),
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_records_per_dataset.csv'),
@@ -525,7 +544,7 @@ write.csv(pq_pids_by_fitbit_devices,
 
 ```{r unique devices fitbit table, echo=FALSE}
 pq_pids_by_fitbit_devices %>% 
-      knitr::kable(format = "markdown")
+      knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 ```
 
 </details>
@@ -716,7 +735,12 @@ colnames(curr_state) <- col_vals
 
 curr_state[1,] <- pq_pids_by_dataset$n_participants
 
-curr_state[2, 1] <- pq_pids_by_fitbit_devices$n_participants[which(pq_pids_by_fitbit_devices$Type=="TRACKER"&pq_pids_by_fitbit_devices$Device!="MobileTrack")] %>% sum()
+curr_state[2, 1] <- 
+  pq_pids_by_fitbit_devices$n_participants[
+    which(pq_pids_by_fitbit_devices$Type=="TRACKER"&pq_pids_by_fitbit_devices$Device!="MobileTrack")
+  ] %>% 
+  sum()
+
 curr_state[2, 2] <- pq_filtered_pids_by_hk$n_participants[which(grepl("Watch*", pq_filtered_pids_by_hk$Source))] %>% sum()
 curr_state[2, 3] <- pq_pids_by_googlefit$n_participants[which(pq_pids_by_googlefit$DeviceType=="WATCH")] %>% sum()
 curr_state[2, 4] <- NA
@@ -730,7 +754,7 @@ curr_state[3, 5] <- curr_state[3, 1] + curr_state[3, 2] + curr_state[3, 3] + cur
 
 curr_state <- curr_state %>% as.data.frame()
 
-curr_state %>% knitr::kable(format = "markdown")
+curr_state %>% knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
 write.csv(curr_state, 
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'),
@@ -762,7 +786,7 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn53216321"
+DASHBOARD_FOLDER_SYNID <- "syn55256828"
 FOLDER_NAME <- "Participants and Devices"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
