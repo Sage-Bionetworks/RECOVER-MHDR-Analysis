@@ -30,7 +30,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2023-12-06"
+ARCHIVE_VERSION <- "2024-02-01"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/fitbit-dailydata-metrics/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/fitbit-dailydata-metrics/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -169,7 +169,7 @@ days_present_nonzero_per_participant_hr_df <-
 kd <-
   hist(
     days_present_nonzero_per_participant_hr_df$days_present_nonzero,
-    breaks = seq(0, 1100, by = 50),
+    # breaks = seq(0, 1100, by = 50),
     labels = TRUE,
     xlab = "Number of Days",
     ylab = "Count",
@@ -366,7 +366,7 @@ days_present_nonzero_per_participant_spo2_df <-
 kd5 <- 
   hist(
     days_present_nonzero_per_participant_spo2_df$days_present_nonzero, 
-    breaks = seq(0, 600, by = 50),
+    # breaks = seq(0, 600, by = 50),
     labels = T,
     xlab = "Number of Days",
     ylab = "Count",
@@ -445,7 +445,7 @@ days_present_nonzero_per_participant_hrv_df <- days_present_nonzero_per_particip
 kd7 <- 
   hist(
     days_present_nonzero_per_participant_hrv_df$days_present_nonzero, 
-    breaks = seq(0, 800, by = 50),
+    # breaks = seq(0, 800, by = 50),
     labels = T,
     xlab = "Number of Days",
     ylab = "Count",
@@ -521,15 +521,12 @@ insights_hrv <-
 insights <- bind_rows(insights_hr, insights_steps, insights_spo2, insights_hrv)
 
 fitbit_dailydata_metrics <- 
-  data.frame(Type = insights$category, 
-             Participants = insights$n_participants_with_complete_nonzero_records,
-             Records = insights$n_complete_nonzero_records, 
-             Average_Days_and_Since_Enrollment = paste0(
-               round(insights$avg_n_days_of_complete_nonzero_data, 1), 
-               ' (', 
-               round(insights$avg_n_days_since_enrollment_all_participants, 1), 
-               ')'), 
-             Proportion_Days_Present_Since_Enrollment = round(insights$proportion_avg_n_days_since_enrollment_all_participants, 3))
+  data.frame(type = insights$category, 
+             n_participants = insights$n_participants_with_complete_nonzero_records,
+             n_records = insights$n_complete_nonzero_records, 
+             avg_n_days = round(insights$avg_n_days_of_complete_nonzero_data, 1), 
+             avg_n_days_since_enroll = round(insights$avg_n_days_since_enrollment_all_participants, 1),
+             prop_avg_n_days_since_enroll = round(insights$proportion_avg_n_days_since_enrollment_all_participants, 3))
 
 write.csv(insights, 
           paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/insights.csv"), 
@@ -544,8 +541,17 @@ write.csv(fitbit_dailydata_metrics,
 
 ```{r At a glance, echo=FALSE}
 fitbit_dailydata_metrics %>% 
-  knitr::kable(format = "markdown")
+  knitr::kable(format = "markdown", 
+               format.args = list(big.mark = ","))
 ```
+
+*Note:* 
+
+- n_participants = Number of unique participants with complete non-zero records
+- n_records = Number of complete non-zero records
+- avg_n_days = Average number of days of complete non-zero data
+- avg_n_days_since_enroll = Average number of days of complete non-zero data since enrollment across all participants
+- prop_avg_n_days_since_enroll = Proportion of average number of days of complete non-zero data since enrollment across all participants
 
 
 ### Number of Records
@@ -572,8 +578,16 @@ insights %>%
                   "measure", 
                   "n_participants_with_complete_records", 
                   "n_participants_with_complete_nonzero_records"))) %>% 
+  rename(n_participants = n_participants_with_complete_records,
+         n_participants_nonzero_records = n_participants_with_complete_nonzero_records) %>% 
   knitr::kable(format = "markdown")
 ```
+
+*Note:* 
+
+- n_participants = Number of unique participants with complete records
+- n_participants_nonzero_records = Number of unique participants with complete non-zero records
+
 
 ### Number of Days of Data
 
@@ -585,9 +599,18 @@ insights %>%
                   "avg_n_days_of_complete_nonzero_data", 
                   "avg_n_days_since_enrollment_all_participants",
                   "proportion_avg_n_days_since_enrollment_all_participants"))) %>% 
+  rename(avg_n_days_all_data = avg_n_days_of_complete_nonzero_data,
+         avg_n_days_since_enroll = avg_n_days_since_enrollment_all_participants,
+         prop_avg_n_days_since_enroll = proportion_avg_n_days_since_enrollment_all_participants) %>% 
   knitr::kable(format = "markdown", 
                format.args = list(digits = 3))
 ```
+
+*Note:* 
+
+- avg_n_days_all_data = Average number of days of complete non-zero data
+- avg_n_days_since_enroll = Average number of days of complete non-zero data since enrollment across all participants
+- avg_n_days_since_enroll = Proportion of average number of days of complete non-zero data since enrollment across all participants
 
 ### Average Device Wear Time
 
@@ -599,9 +622,16 @@ insights %>%
                   "avg_total_wear_time_since_enrollment_all_participants", 
                   "proportion_avg_total_wear_time_since_enrollment_all_participants"))) %>% 
   filter(measure == "HeartRateIntradayMinuteCount") %>% 
+  rename(avg_total_wear_time = avg_total_wear_time_since_enrollment_all_participants,
+         prop_avg_total_wear_time = proportion_avg_total_wear_time_since_enrollment_all_participants) %>% 
   knitr::kable(format = "markdown",
                format.args = list(digits = 3))
 ```
+
+*Note:* 
+
+- avg_total_wear_time = Average total wear time since enrollment across all participants
+- prop_avg_total_wear_time =Proportion of average total wear time since enrollment across all participants
 
 ## Code used 
 
@@ -626,7 +656,7 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn53122914"
+DASHBOARD_FOLDER_SYNID <- "syn55256828"
 FOLDER_NAME <- "Fitbit DailyData Metrics"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
