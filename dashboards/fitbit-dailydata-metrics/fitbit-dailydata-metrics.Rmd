@@ -545,13 +545,12 @@ fitbit_dailydata_metrics %>%
                format.args = list(big.mark = ","))
 ```
 
-*Note:* 
-
-- n_participants = Number of unique participants with complete non-zero records
-- n_records = Number of complete non-zero records
-- avg_n_days = Average number of days of complete non-zero data
-- avg_n_days_since_enroll = Average number of days of complete non-zero data since enrollment across all participants
-- prop_avg_n_days_since_enroll = Proportion of average number of days of complete non-zero data since enrollment across all participants
+**Note:**
+- `n_participants` = Number of unique participants with complete non-zero records
+- `n_records` = Number of complete non-zero records
+- `avg_n_days` = Average number of days of complete non-zero data
+- `avg_n_days_since_enroll` = Average number of days of complete non-zero data since enrollment across all participants
+- `prop_avg_n_days_since_enroll` = Proportion of average number of days of complete non-zero data since enrollment across all participants
 
 
 ### Number of Records
@@ -583,10 +582,9 @@ insights %>%
   knitr::kable(format = "markdown")
 ```
 
-*Note:* 
-
-- n_participants = Number of unique participants with complete records
-- n_participants_nonzero_records = Number of unique participants with complete non-zero records
+**Note:**
+- `n_participants` = Number of unique participants with complete records
+- `n_participants_nonzero_records` = Number of unique participants with complete non-zero records
 
 
 ### Number of Days of Data
@@ -606,11 +604,10 @@ insights %>%
                format.args = list(digits = 3))
 ```
 
-*Note:* 
-
-- avg_n_days_all_data = Average number of days of complete non-zero data
-- avg_n_days_since_enroll = Average number of days of complete non-zero data since enrollment across all participants
-- avg_n_days_since_enroll = Proportion of average number of days of complete non-zero data since enrollment across all participants
+**Note:** 
+- `avg_n_days_all_data` = Average number of days of complete non-zero data
+- `avg_n_days_since_enroll` = Average number of days of complete non-zero data since enrollment across all participants
+- `avg_n_days_since_enroll` = Proportion of average number of days of complete non-zero data since enrollment across all participants
 
 ### Average Device Wear Time
 
@@ -628,10 +625,9 @@ insights %>%
                format.args = list(digits = 3))
 ```
 
-*Note:* 
-
-- avg_total_wear_time = Average total wear time since enrollment across all participants
-- prop_avg_total_wear_time =Proportion of average total wear time since enrollment across all participants
+**Note:**
+- `avg_total_wear_time` = Average total wear time since enrollment across all participants
+- `prop_avg_total_wear_time` =Proportion of average total wear time since enrollment across all participants
 
 ## Code used 
 
