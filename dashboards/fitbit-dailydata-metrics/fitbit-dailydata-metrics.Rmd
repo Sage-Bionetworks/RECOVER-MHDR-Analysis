@@ -74,15 +74,24 @@ fitbitdailydata <-
   arrow::open_dataset(
     s3$path(
       dataset_paths[grep(".*dataset_fitbitdailydata$", dataset_paths)])) %>% 
+  select(all_of(c("ParticipantIdentifier", 
+                  "Date", 
+                  "cohort", 
+                  "HeartRateIntradayMinuteCount", 
+                  "Steps", 
+                  "SpO2_Avg", 
+                  "Hrv_DailyRmssd"))) %>% 
   mutate(
     HeartRateIntradayMinuteCount = as.numeric(HeartRateIntradayMinuteCount),
     Steps = as.numeric(Steps),
     SpO2_Avg = as.numeric(SpO2_Avg),
     Hrv_DailyRmssd = as.numeric(Hrv_DailyRmssd)) %>% 
+  collect() %>% 
+  # filter((!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>%
+  #          tidyr::replace_na(TRUE)) %>% 
   rename(
     spo2_avg = SpO2_Avg,
-    hrv = Hrv_DailyRmssd) %>% 
-  collect()
+    hrv = Hrv_DailyRmssd)
 
 enrolledparticipants <- 
   arrow::open_dataset(
