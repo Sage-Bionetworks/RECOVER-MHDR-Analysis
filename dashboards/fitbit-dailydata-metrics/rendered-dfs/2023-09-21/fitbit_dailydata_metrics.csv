@@ -1,0 +1,5 @@
+"Type","Participants","Records","Average_Days_and_Since_Enrollment","Proportion_Days_Present_Since_Enrollment"
+"heartrate",891,47301,"53.1 (41.1)",0.644
+"activity",910,122642,"134.8 (43)",0.668
+"spo2",751,49738,"66.2 (33.1)",0.511
+"hrv",711,62160,"87.4 (34.1)",0.526
