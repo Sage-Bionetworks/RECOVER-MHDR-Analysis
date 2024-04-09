@@ -627,7 +627,7 @@ insights %>%
 
 **Note:**
 - `avg_total_wear_time` = Average total wear time since enrollment across all participants
-- `prop_avg_total_wear_time` =Proportion of average total wear time since enrollment across all participants
+- `prop_avg_total_wear_time` = Proportion of average total wear time since enrollment across all participants
 
 ## Code used 
 
