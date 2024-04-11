@@ -223,7 +223,7 @@ axis(1, at = seq(0, 1100, by = 100))
 <summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
 
-```{r heart rate calculations}
+```{r heart rate calculations 2}
 wear_time_devices_connected_date_df_hr <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, HeartRateIntradayMinuteCount), 
              y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -273,7 +273,7 @@ avg_total_wear_time_since_devices_connected_date_per_participant <-
 
 <summary>Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate</summary>
 
-```{r heart rate calculations}
+```{r heart rate calculations 3}
 kd2 <- density(avg_total_wear_time_since_devices_connected_date_per_participant$avg_wear_time_percent, bw = "SJ")
 plot(kd2, main = "Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate: HeartRate")
 polygon(kd2, col='lightblue', border='black')
@@ -347,7 +347,7 @@ axis(1, at = seq(0, 2000, by = 100))
 
 <summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
-```{r activity steps calculations}
+```{r activity steps calculations 2}
 days_devices_connected_date_df_steps <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, Steps), 
         y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -386,7 +386,7 @@ axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), 
 
 <summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
 
-```{r activity steps calculations}
+```{r activity steps calculations 3}
 proportion_days_since_devices_connected_date_per_participant_steps <-
   days_devices_connected_date_df_steps %>%
   group_by(ParticipantIdentifier) %>%
@@ -449,7 +449,7 @@ axis(1, at = seq(0, 600, by = 100))
 
 <summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
-```{r spo2 calculations}
+```{r spo2 calculations 2}
 days_devices_connected_date_df_spo2 <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, spo2_avg), 
         y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -488,7 +488,7 @@ axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), 
 
 <summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
 
-```{r spo2 calculations}
+```{r spo2 calculations 3}
 proportion_days_since_devices_connected_date_per_participant_spo2 <-
   days_devices_connected_date_df_spo2 %>%
   group_by(ParticipantIdentifier) %>%
@@ -551,7 +551,7 @@ axis(1, at = seq(0, 800, by = 100))
 
 <summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
-```{r hrv calculations}
+```{r hrv calculations 2}
 days_devices_connected_date_df_hrv <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, hrv), 
         y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -590,7 +590,7 @@ axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), 
 
 <summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
 
-```{r hrv calculations}
+```{r hrv calculations 3}
 proportion_days_since_devices_connected_date_per_participant_hrv <-
   days_devices_connected_date_df_hrv %>%
   group_by(ParticipantIdentifier) %>%
@@ -623,7 +623,7 @@ insights_hrv <-
 
 ## Insights and Metrics Tables
 
-```{r bind all four calculations dfs}
+```{r bind all calculations dfs}
 insights <- bind_rows(insights_hr, insights_steps, insights_spo2, insights_hrv)
 
 fitbit_dailydata_metrics <- 
