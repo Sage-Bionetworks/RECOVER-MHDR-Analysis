@@ -220,7 +220,7 @@ axis(1, at = seq(0, 1100, by = 100))
 
 <details open>
 
-<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
 
 ```{r heart rate calculations 2}
@@ -271,7 +271,7 @@ avg_total_wear_time_since_devices_connected_date_per_participant <-
 
 <details open>
 
-<summary>Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate</summary>
+<summary>Click to Expand: Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate</summary>
 
 ```{r heart rate calculations 3}
 kd2 <- density(avg_total_wear_time_since_devices_connected_date_per_participant$avg_wear_time_percent, bw = "SJ")
@@ -345,7 +345,7 @@ axis(1, at = seq(0, 2000, by = 100))
 
 <details open>
 
-<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
 ```{r activity steps calculations 2}
 days_devices_connected_date_df_steps <- 
@@ -384,7 +384,7 @@ axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), 
 
 <details open>
 
-<summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+<summary>Click to Expand: Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
 
 ```{r activity steps calculations 3}
 proportion_days_since_devices_connected_date_per_participant_steps <-
@@ -447,7 +447,7 @@ axis(1, at = seq(0, 600, by = 100))
 
 <details open>
 
-<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
 ```{r spo2 calculations 2}
 days_devices_connected_date_df_spo2 <- 
@@ -486,7 +486,7 @@ axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), 
 
 <details open>
 
-<summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+<summary>Click to Expand: Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
 
 ```{r spo2 calculations 3}
 proportion_days_since_devices_connected_date_per_participant_spo2 <-
@@ -549,7 +549,7 @@ axis(1, at = seq(0, 800, by = 100))
 
 <details open>
 
-<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
 
 ```{r hrv calculations 2}
 days_devices_connected_date_df_hrv <- 
@@ -588,7 +588,7 @@ axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), 
 
 <details open>
 
-<summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+<summary>Click to Expand: Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
 
 ```{r hrv calculations 3}
 proportion_days_since_devices_connected_date_per_participant_hrv <-
