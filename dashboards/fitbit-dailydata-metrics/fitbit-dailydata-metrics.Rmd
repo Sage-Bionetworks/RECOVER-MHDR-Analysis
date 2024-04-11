@@ -664,11 +664,11 @@ fitbit_dailydata_metrics %>%
 
 </details>
 
+### Number of Records
+
 <details>
 
 <summary>Expand</summary>
-
-### Number of Records
 
 ```{r insights table num records, echo=FALSE}
 insights %>% 
@@ -690,11 +690,11 @@ insights %>%
 
 </details>
 
+### Number of Participants
+
 <details>
 
 <summary>Expand</summary>
-
-### Number of Participants
 
 ```{r insights table num participants, echo=FALSE}
 insights %>% 
@@ -714,11 +714,11 @@ insights %>%
 
 </details>
 
+### Number of Days of Data
+
 <details>
 
 <summary>Expand</summary>
-
-### Number of Days of Data
 
 ```{r insights table num days of data, echo=FALSE}
 insights %>% 
@@ -742,11 +742,11 @@ insights %>%
 
 </details>
 
+### Average Device Wear Time
+
 <details>
 
 <summary>Expand</summary>
-
-### Average Device Wear Time
 
 ```{r insights table avg wear time, echo=FALSE}
 insights %>% 
