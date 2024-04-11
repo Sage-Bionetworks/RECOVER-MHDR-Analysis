@@ -162,6 +162,10 @@ avg_days_present_nonzero <- function(df, col) {
 
 ## Heart Rate
 
+<details>
+
+<summary>Number of Participants with N Days of Non-Zero Data</summary>
+
 ```{r heart rate calculations}
 days_present_nonzero_per_participant_hr_df <- 
   days_present_nonzero_per_participant(fitbitdailydata, "HeartRateIntradayMinuteCount")
@@ -210,7 +214,16 @@ axis(1, at = seq(0, 1100, by = 100))
 #      main = "Number of Days of Data per Participant",
 #      sub = "HeartRate: HeartRateIntradayMinuteCount != 0")
 # polygon(kd, col='lightblue', border='black')
+```
 
+</details>
+
+<details open>
+
+<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+
+```{r heart rate calculations}
 wear_time_devices_connected_date_df_hr <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, HeartRateIntradayMinuteCount), 
              y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -252,7 +265,15 @@ avg_total_wear_time_since_devices_connected_date_per_participant <-
   summarise(
     avg_wear_time_mins = round(sum(HeartRateIntradayMinuteCount)/as.numeric(first(days)), 3), 
     avg_wear_time_percent = round((sum(HeartRateIntradayMinuteCount)/as.numeric(first(days)))/1439, 3))
+```
 
+</details>
+
+<details open>
+
+<summary>Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate</summary>
+
+```{r heart rate calculations}
 kd2 <- density(avg_total_wear_time_since_devices_connected_date_per_participant$avg_wear_time_percent, bw = "SJ")
 plot(kd2, main = "Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate: HeartRate")
 polygon(kd2, col='lightblue', border='black')
@@ -292,7 +313,13 @@ insights_hr <-
     )
 ```
 
+</details>
+
 ## Steps (Activity)
+
+<details>
+
+<summary>Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r activity steps calculations}
 days_present_nonzero_per_participant_steps_df <- 
@@ -312,7 +339,15 @@ axis(1, at = seq(0, 2000, by = 100))
 # kd3 <- density(days_present_nonzero_per_participant_steps_df$days_present_nonzero, bw = "SJ")
 # plot(kd3, main = "Number of Days of Data per Participant", sub = "Activity: Steps")
 # polygon(kd3, col='lightblue', border='black')
+```
 
+</details>
+
+<details open>
+
+<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+```{r activity steps calculations}
 days_devices_connected_date_df_steps <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, Steps), 
         y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -343,7 +378,15 @@ kd3.2 <-
     main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: Steps"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+```
 
+</details>
+
+<details open>
+
+<summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+
+```{r activity steps calculations}
 proportion_days_since_devices_connected_date_per_participant_steps <-
   days_devices_connected_date_df_steps %>%
   group_by(ParticipantIdentifier) %>%
@@ -372,7 +415,13 @@ insights_steps <-
   )
 ```
 
+</details>
+
 ## SpO2
+
+<details>
+
+<summary>Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r spo2 calculations}
 days_present_nonzero_per_participant_spo2_df <- 
@@ -392,7 +441,15 @@ axis(1, at = seq(0, 600, by = 100))
 # kd5 <- density(days_present_nonzero_per_participant_spo2_df$days_present_nonzero, bw = "SJ")
 # plot(kd5, main = "Number of Days of Data per Participant", sub = "spo2")
 # polygon(kd5, col='lightblue', border='black')
+```
 
+</details>
+
+<details open>
+
+<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+```{r spo2 calculations}
 days_devices_connected_date_df_spo2 <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, spo2_avg), 
         y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -420,10 +477,18 @@ kd5.2 <-
     labels = TRUE,
     xlab = "Number of Days",
     ylab = "Count",
-    main = "Number of Participants with N Days of Non-Zero Data Since Enrollment: SpO2"
+    main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: SpO2"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+```
 
+</details>
+
+<details open>
+
+<summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+
+```{r spo2 calculations}
 proportion_days_since_devices_connected_date_per_participant_spo2 <-
   days_devices_connected_date_df_spo2 %>%
   group_by(ParticipantIdentifier) %>%
@@ -433,7 +498,7 @@ proportion_days_since_devices_connected_date_per_participant_spo2 <-
   mutate(adherence_proportion = n_days/dt)
 
 kd6 <- density(proportion_days_since_devices_connected_date_per_participant_spo2$adherence_proportion, bw = "ucv")
-plot(kd6, main = "Proportion of Number of Days of Non-Zero Data Since Enrollment per Participant: SpO2")
+plot(kd6, main = "Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant: SpO2")
 polygon(kd6, col='lightblue', border='black')
 
 insights_spo2 <- 
@@ -453,7 +518,13 @@ insights_spo2 <-
 
 ```
 
+</details>
+
 ## HRV
+
+<details>
+
+<summary>Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r hrv calculations}
 days_present_nonzero_per_participant_hrv_df <- days_present_nonzero_per_participant(fitbitdailydata, "hrv")
@@ -472,7 +543,15 @@ axis(1, at = seq(0, 800, by = 100))
 # kd7 <- density(days_present_nonzero_per_participant_hrv_df$days_present_nonzero, bw = "SJ")
 # plot(kd7, main = "Number of Days of Data per Participant", sub = "hrv")
 # polygon(kd7, col='lightblue', border='black')
+```
 
+</details>
+
+<details open>
+
+<summary>Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+```{r hrv calculations}
 days_devices_connected_date_df_hrv <- 
   merge(x = fitbitdailydata %>% select(ParticipantIdentifier, Date, hrv), 
         y = enrolledparticipants %>% select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
@@ -500,10 +579,18 @@ kd5.2 <-
     labels = TRUE,
     xlab = "Number of Days",
     ylab = "Count",
-    main = "Number of Participants with N Days of Non-Zero Data Since Enrollment: HRV"
+    main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: HRV"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+```
 
+</details>
+
+<details open>
+
+<summary>Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+
+```{r hrv calculations}
 proportion_days_since_devices_connected_date_per_participant_hrv <-
   days_devices_connected_date_df_hrv %>%
   group_by(ParticipantIdentifier) %>%
@@ -513,7 +600,7 @@ proportion_days_since_devices_connected_date_per_participant_hrv <-
   mutate(adherence_proportion = n_days/dt)
 
 kd8 <- density(proportion_days_since_devices_connected_date_per_participant_hrv$adherence_proportion, bw = "ucv")
-plot(kd8, main = "Proportion of Number of Days of Non-Zero Data Since Enrollment per Participant: HRV")
+plot(kd8, main = "Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant: HRV")
 polygon(kd8, col='lightblue', border='black')
 
 insights_hrv <- 
@@ -531,6 +618,8 @@ insights_hrv <-
     "proportion_avg_n_days_since_devices_connected_date_all_participants" = mean(proportion_days_since_devices_connected_date_per_participant_hrv$adherence_proportion)
   )
 ```
+
+</details>
 
 ## Insights and Metrics Tables
 
@@ -556,6 +645,10 @@ write.csv(fitbit_dailydata_metrics,
 
 ### At a Glance
 
+<details>
+
+<summary>Expand</summary>
+
 ```{r At a glance, echo=FALSE}
 fitbit_dailydata_metrics %>% 
   knitr::kable(format = "markdown", 
@@ -569,6 +662,11 @@ fitbit_dailydata_metrics %>%
 - `avg_days_since_connected` = Average number of days of complete non-zero data since `DevicesConnectedDate` across all participants
 - `prop_avg_days_since_connected` = Proportion of average number of days of complete non-zero data since `DevicesConnectedDate` across all participants
 
+</details>
+
+<details>
+
+<summary>Expand</summary>
 
 ### Number of Records
 
@@ -590,6 +688,11 @@ insights %>%
 - `n_complete` = Number of complete records
 - `n_complete_nonzero` = Number of complete non-zero records
 
+</details>
+
+<details>
+
+<summary>Expand</summary>
 
 ### Number of Participants
 
@@ -609,6 +712,11 @@ insights %>%
 - `n_participants` = Number of unique participants with complete records
 - `n_participants_complete_nonzero` = Number of unique participants with complete non-zero records
 
+</details>
+
+<details>
+
+<summary>Expand</summary>
 
 ### Number of Days of Data
 
@@ -632,6 +740,12 @@ insights %>%
 - `avg_days_since_connected` = Average number of days of complete non-zero data since `DevicesConnectedDate` across all participants
 - `prop_avg_days_since_connected` = Proportion of average number of days of complete non-zero data since `DevicesConnectedDate` across all participants
 
+</details>
+
+<details>
+
+<summary>Expand</summary>
+
 ### Average Device Wear Time
 
 ```{r insights table avg wear time, echo=FALSE}
@@ -652,6 +766,8 @@ insights %>%
 - `avg_total_wear_time` = Average total wear time since `DevicesConnectedDate` across all participants
 - `prop_avg_total_wear_time` = Proportion of average total wear time since `DevicesConnectedDate` across all participants
 
+</details>
+
 ## Code used 
 
 ```{r provenance, echo=FALSE, results='asis'}
@@ -665,7 +781,7 @@ latest_file_commit <-
          .token = readLines("~/git_token.txt"))[[1]]$commit$url %>% 
   {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
 
-cat("[GitHub Code](", latest_file_commit, ")")
+cat("[Link to GitHub repo](", latest_file_commit, ")")
 ```
 
 
