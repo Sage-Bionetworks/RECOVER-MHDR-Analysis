@@ -164,7 +164,7 @@ avg_days_present_nonzero <- function(df, col) {
 
 <details>
 
-<summary>Number of Participants with N Days of Non-Zero Data</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r heart rate calculations}
 days_present_nonzero_per_participant_hr_df <- 
@@ -319,7 +319,7 @@ insights_hr <-
 
 <details>
 
-<summary>Number of Participants with N Days of Non-Zero Data</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r activity steps calculations}
 days_present_nonzero_per_participant_steps_df <- 
@@ -421,7 +421,7 @@ insights_steps <-
 
 <details>
 
-<summary>Number of Participants with N Days of Non-Zero Data</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r spo2 calculations}
 days_present_nonzero_per_participant_spo2_df <- 
@@ -524,7 +524,7 @@ insights_spo2 <-
 
 <details>
 
-<summary>Number of Participants with N Days of Non-Zero Data</summary>
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
 
 ```{r hrv calculations}
 days_present_nonzero_per_participant_hrv_df <- days_present_nonzero_per_participant(fitbitdailydata, "hrv")
@@ -647,7 +647,7 @@ write.csv(fitbit_dailydata_metrics,
 
 <details>
 
-<summary>Expand</summary>
+<summary>Click to Expand</summary>
 
 ```{r At a glance, echo=FALSE}
 fitbit_dailydata_metrics %>% 
@@ -668,7 +668,7 @@ fitbit_dailydata_metrics %>%
 
 <details>
 
-<summary>Expand</summary>
+<summary>Click to Expand</summary>
 
 ```{r insights table num records, echo=FALSE}
 insights %>% 
@@ -694,7 +694,7 @@ insights %>%
 
 <details>
 
-<summary>Expand</summary>
+<summary>Click to Expand</summary>
 
 ```{r insights table num participants, echo=FALSE}
 insights %>% 
@@ -718,7 +718,7 @@ insights %>%
 
 <details>
 
-<summary>Expand</summary>
+<summary>Click to Expand</summary>
 
 ```{r insights table num days of data, echo=FALSE}
 insights %>% 
@@ -746,7 +746,7 @@ insights %>%
 
 <details>
 
-<summary>Expand</summary>
+<summary>Click to Expand</summary>
 
 ```{r insights table avg wear time, echo=FALSE}
 insights %>% 
