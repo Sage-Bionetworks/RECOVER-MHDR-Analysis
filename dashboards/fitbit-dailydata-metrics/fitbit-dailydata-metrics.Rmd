@@ -188,7 +188,7 @@ kd <-
     # breaks = seq(0, 1100, by = 50),
     labels = TRUE,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: Heart Rate"
   )
 axis(1, at = seq(0, 1100, by = 100))
@@ -250,7 +250,7 @@ kd.2 <-
     breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
     labels = TRUE,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: Heart Rate"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
@@ -331,7 +331,7 @@ kd3 <-
     breaks = seq(0, 2000, by = 50),
     labels = T,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: Steps (Activity)"
   )
 axis(1, at = seq(0, 2000, by = 100))
@@ -374,7 +374,7 @@ kd3.2 <-
     breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
     labels = TRUE,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: Steps"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
@@ -433,7 +433,7 @@ kd5 <-
     # breaks = seq(0, 600, by = 50),
     labels = T,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: SpO2"
   )
 axis(1, at = seq(0, 600, by = 100))
@@ -476,7 +476,7 @@ kd5.2 <-
     breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
     labels = TRUE,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: SpO2"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
@@ -535,7 +535,7 @@ kd7 <-
     # breaks = seq(0, 800, by = 50),
     labels = T,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: HRV"
   )
 axis(1, at = seq(0, 800, by = 100))
@@ -578,7 +578,7 @@ kd5.2 <-
     breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
     labels = TRUE,
     xlab = "Number of Days",
-    ylab = "Count",
+    ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate: HRV"
   )
 axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
