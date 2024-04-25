@@ -28,8 +28,6 @@ library(synapser)
 library(knit2synapse)
 library(ggpubr)
 
-synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
-
 ARCHIVE_VERSION <- "2024-04-23"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
@@ -40,6 +38,7 @@ if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rend
 Using data from external parquet archive version: `r ARCHIVE_VERSION`
 
 ```{r access data, include=FALSE, message=FALSE, warning=FALSE}
+
 synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 sts_token <- 
@@ -72,159 +71,136 @@ for (dataset in dataset_list) {
 ```
 
 
-```{r open datasets, include=FALSE}
+```{r get datasets, include=FALSE}
+
 enrolled <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_enrolledparticipants$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_enrolledparticipants$", dataset_paths)]))
 
 enrolled_symptoms <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_enrolledparticipants_customfields_symptoms$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_enrolledparticipants_customfields_symptoms$", dataset_paths)]))
 
 enrolled_treatments <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_enrolledparticipants_customfields_treatments$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_enrolledparticipants_customfields_treatments$", dataset_paths)]))
 
 fitbit_actlogs <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitactivitylogs$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitactivitylogs$", dataset_paths)]))
 
 fitbit_dailydata <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitdailydata$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitdailydata$", dataset_paths)]))
 
 fitbit_devices <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitdevices$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitdevices$", dataset_paths)]))
 
 fitbit_ecg <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitecg$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitecg$", dataset_paths)]))
 
 fitbit_ecg_waveformsamples <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitecg_waveformsamples$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitecg_waveformsamples$", dataset_paths)]))
 
 fitbit_intracomb <- 
   arrow::open_dataset(
     s3$path(
       dataset_paths[grep(".*dataset_fitbitintradaycombined$", dataset_paths)])) %>% 
   select(ParticipantIdentifier) %>% 
-  distinct() %>% 
-  collect()
+  distinct()
 
 fitbit_rhr <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitrestingheartrates$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitrestingheartrates$", dataset_paths)]))
 
 fitbit_sleeplogs <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitsleeplogs$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitsleeplogs$", dataset_paths)]))
 
 fitbit_sleeplogdetail <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_fitbitsleeplogs_sleeplogdetails$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_fitbitsleeplogs_sleeplogdetails$", dataset_paths)]))
 
 googlefit <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_googlefitsamples$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_googlefitsamples$", dataset_paths)]))
 
 hk_activitysummaries <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2activitysummaries$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2activitysummaries$", dataset_paths)]))
 
 hk_ecg <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2electrocardiogram$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2electrocardiogram$", dataset_paths)]))
 
 hk_ecg_subsamples <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2electrocardiogram_subsamples$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2electrocardiogram_subsamples$", dataset_paths)]))
 
 hk_heartbeat <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2heartbeat$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2heartbeat$", dataset_paths)]))
 
 hk_heartbeat_subsamples <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2heartbeat_subsamples$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2heartbeat_subsamples$", dataset_paths)]))
 
 hk_samples <- 
   arrow::open_dataset(
     s3$path(
       dataset_paths[grep(".*dataset_healthkitv2samples$", dataset_paths)])) %>% 
-  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-  collect()
+  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate)
 
 hk_stats <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2statistics$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2statistics$", dataset_paths)]))
 
 hk_workouts <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2workouts$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2workouts$", dataset_paths)]))
 
 hk_workouts_events <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2workouts_events$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_healthkitv2workouts_events$", dataset_paths)]))
 
 symptomlog <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_symptomlog$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_symptomlog$", dataset_paths)]))
 
 symptomlog_symptoms <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_symptomlog_value_symptoms$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_symptomlog_value_symptoms$", dataset_paths)]))
 
 symptomlog_treatments <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_symptomlog_value_treatments$", dataset_paths)])) %>% 
-  collect()
+      dataset_paths[grep(".*dataset_symptomlog_value_treatments$", dataset_paths)]))
+tictoc::toc()
 ```
 
 
@@ -233,63 +209,63 @@ symptomlog_treatments <-
 all_participants_by_dataset <- tibble(dataset = character(), ParticipantIdentifier = character())
 all_participants_by_dataset <- 
   bind_rows(
-    all_participants_by_dataset, 
+    all_participants_by_dataset,
     (enrolled %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'enrolledparticipants')),
+       mutate(dataset = 'enrolledparticipants') %>% collect()),
     (enrolled_symptoms %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'enrolledparticipants')),
+       mutate(dataset = 'enrolledparticipants') %>% collect()),
     (enrolled_treatments %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'enrolledparticipants')),
+       mutate(dataset = 'enrolledparticipants') %>% collect()),
     (fitbit_actlogs %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (fitbit_dailydata %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (fitbit_devices %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (fitbit_ecg %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (fitbit_intracomb %>%
        select(ParticipantIdentifier) %>% 
        distinct() %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (fitbit_rhr %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (fitbit_sleeplogs %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'fitbit')),
+       mutate(dataset = 'fitbit') %>% collect()),
     (googlefit %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'googlefit')),
+       mutate(dataset = 'googlefit') %>% collect()),
     (hk_activitysummaries %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'healthkit')),
+       mutate(dataset = 'healthkit') %>% collect()),
     (hk_ecg %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'healthkit')),
+       mutate(dataset = 'healthkit') %>% collect()),
     (hk_heartbeat %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'healthkit')),
+       mutate(dataset = 'healthkit') %>% collect()),
     (hk_samples %>%
        select(ParticipantIdentifier) %>% 
        distinct() %>% 
-       mutate(dataset = 'healthkit')),
+       mutate(dataset = 'healthkit') %>% collect()),
     (hk_stats %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'healthkit')),
+       mutate(dataset = 'healthkit') %>% collect()),
     (hk_workouts %>% 
        select(ParticipantIdentifier) %>% 
-       mutate(dataset = 'healthkit')),
+       mutate(dataset = 'healthkit') %>% collect()),
     (symptomlog %>% 
       select(ParticipantIdentifier) %>% 
-      mutate(dataset = 'symptomlog'))) %>% 
+      mutate(dataset = 'symptomlog')) %>% collect()) %>% 
   group_by(dataset, ParticipantIdentifier) %>% 
   distinct() %>% 
   ungroup()
@@ -303,33 +279,41 @@ if (ARCHIVE_VERSION >= "2024-02-29") {
   hk_devices <- bind_rows(
     (hk_ecg %>% 
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+       collect()),
     (hk_heartbeat %>% 
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion,StartDate) %>% 
-       mutate(Source_Identifier = NA)),
+       mutate(Source_Identifier = NA) %>% 
+       collect()),
     (hk_samples %>%
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>%
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+       collect()),
     (hk_workouts %>% 
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
        mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       group_by(Device_Model, Device_HardwareVersion, Source_Identifier))
+       group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
+       collect())
   )
 } else {
   hk_devices <- bind_rows(
     (hk_ecg %>% 
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+       collect()),
     (hk_heartbeat %>% 
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+       collect()),
     (hk_samples %>%
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>%
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier))),
+       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+       collect()),
     (hk_workouts %>% 
        select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
        mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       group_by(Device_Model, Device_HardwareVersion, Source_Identifier))
+       group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
+       collect())
   )
 }
 ```
@@ -347,7 +331,8 @@ devices_per_pid_fitbit <-
   count() %>% 
   ungroup() %>% 
   rename(n_participants = n) %>% 
-  mutate(dataset = 'fitbit')
+  mutate(dataset = 'fitbit') %>% 
+  collect()
 
 devices_per_pid_googlefit <- 
   googlefit %>% 
@@ -360,7 +345,8 @@ devices_per_pid_googlefit <-
   count() %>% 
   ungroup() %>% 
   rename(n_participants = n) %>% 
-  mutate(dataset = 'googlefit')
+  mutate(dataset = 'googlefit') %>% 
+  collect()
 
 devices_per_pid_hk <- 
   hk_devices %>% 
@@ -371,29 +357,40 @@ devices_per_pid_hk <-
   count() %>% 
   ungroup() %>% 
   rename(n_participants = n) %>% 
-  mutate(dataset = 'healthkit')
+  mutate(dataset = 'healthkit') %>% 
+  collect()
 ```
 
 
 ```{r create device data mismatch dataframes, include=FALSE}
 
 # Number of Participants Without Device Data Found in Non-Device Files ----
-mismatch_pids_fitbit <- 
-  (all_participants_by_dataset %>% 
-     filter(dataset=='fitbit') %>% 
-     pull(ParticipantIdentifier) %>% 
-     unique() %>% 
-     sort()
-   )[which(!((all_participants_by_dataset %>% filter(dataset=='fitbit') %>% 
+mismatch_pids <- 
+  list(
+    fitbit = 
+      all_participants_by_dataset %>% 
+      filter(dataset=="fitbit") %>% 
+      pull(ParticipantIdentifier) %>% 
+      unique() %>% 
+      sort() %>% 
+      setdiff(fitbit_devices %>% 
                 pull(ParticipantIdentifier) %>% 
                 unique() %>% 
-                sort()
-              ) %in% (fitbit_devices$ParticipantIdentifier %>% 
-                        unique() %>% 
-                        sort())
-             )
-           )
-     ]
+                sort()),
+    googlefit = 
+      all_participants_by_dataset %>% 
+      filter(dataset=="googlefit") %>% 
+      pull(ParticipantIdentifier) %>% 
+      unique() %>% 
+      sort() %>% 
+      setdiff(googlefit %>% 
+                select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
+                collect() %>% 
+                drop_na() %>% 
+                pull(ParticipantIdentifier) %>% 
+                unique() %>% 
+                sort())
+  )
 
 ```
 
@@ -562,7 +559,8 @@ pq_pids_by_fitbit_devices <-
   select(ParticipantIdentifier, Device, Type) %>% 
   group_by(Device, Type) %>% 
   summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
-  arrange(desc(n_participants))
+  arrange(desc(n_participants)) %>% 
+  collect()
 
 pq_pids_by_fitbit_devices %>% 
   ggpubr::ggbarplot(x = "Device",
@@ -602,7 +600,8 @@ pq_pids_by_googlefit <-
   summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
   arrange(desc(n_participants)) %>% 
   rename(DeviceModel=OriginalDataSourceDeviceModel,
-         DeviceType=OriginalDataSourceDeviceType)
+         DeviceType=OriginalDataSourceDeviceType) %>% 
+  collect()
 
 pq_pids_by_googlefit %>% 
   ggpubr::ggbarplot(x = "DeviceModel",
@@ -739,16 +738,16 @@ E.g. N participant IDs were found in the 'fitbit_activitylogs' dataset but not i
 
 #### Fitbit
 
-```{r device data mismatch fitbit viz, echo=FALSE}
+```{r device data mismatch fitbit viz, echo=FALSE, include=FALSE}
 pq_device_pids_mismatch_fitbit <- 
   data.frame(
     dataset = c("activitylogs", "dailydata", "intradaycombined", "restingheartrate", "sleeplogs"),
     n_participants = c(
-      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_actlogs$ParticipantIdentifier %>% unique() %>% sort()))]),
-      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_dailydata$ParticipantIdentifier %>% unique() %>% sort()))]),
-      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_intracomb$ParticipantIdentifier %>% unique() %>% sort()))]),
-      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_rhr$ParticipantIdentifier %>% unique() %>% sort()))]),
-      length(mismatch_pids_fitbit[which(mismatch_pids_fitbit %in% (fitbit_sleeplogs$ParticipantIdentifier %>% unique() %>% sort()))])
+      mismatch_pids$fitbit %>% intersect(fitbit_actlogs %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$fitbit %>% intersect(fitbit_dailydata %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$fitbit %>% intersect(fitbit_intracomb %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$fitbit %>% intersect(fitbit_rhr %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$fitbit %>% intersect(fitbit_sleeplogs %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length()
     )
   ) %>% 
   arrange(desc(n_participants))
