@@ -787,7 +787,7 @@ write.csv(pq_device_pids_mismatch$fitbit,
 
 #### Google Fit
 
-```{r device data mismatch fitbit viz, echo=FALSE}
+```{r device data mismatch googlefit viz, echo=FALSE}
 pq_device_pids_mismatch$googlefit <- 
   data.frame(
     dataset = c("googlefit"),
@@ -812,7 +812,7 @@ write.csv(pq_device_pids_mismatch$googlefit,
 
 #### HealthKit
 
-```{r device data mismatch fitbit viz, echo=FALSE}
+```{r device data mismatch healthkit viz, echo=FALSE}
 
 pq_device_pids_mismatch$healthkit <- 
   data.frame(
@@ -883,6 +883,7 @@ write.csv(curr_state,
 ## Code used 
 
 ```{r provenance, echo=FALSE, results='asis'}
+
 this_file_path <- "dashboards/participants-and-devices/participants-and-devices.Rmd"
 
 latest_file_commit <- 
@@ -897,6 +898,8 @@ cat("[GitHub Code](", latest_file_commit, ")")
 
 
 ```{r knit into synapse, eval=FALSE, include=FALSE}
+
+tictoc::tic("INFO: Participants and Devices Markdown knit2synapse")
 synapseclient <- reticulate::import("synapseclient")
 syn_temp <- synapseclient$Synapse()
 syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
@@ -911,4 +914,5 @@ knit2synapse:::createAndKnitToFolderEntityClient(
   file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
   parentId = DASHBOARD_FOLDER_SYNID,
   folderName = FOLDER_NAME)
+tictoc::toc()
 ```
