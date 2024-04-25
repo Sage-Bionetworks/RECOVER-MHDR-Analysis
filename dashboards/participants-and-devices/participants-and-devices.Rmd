@@ -419,7 +419,7 @@ p1 <-
                     y = "n_participants", 
                     label = TRUE, 
                     color = "grey25", 
-                    fill = "grey25") %>% 
+                    fill = "cohort") %>% 
   ggpar(legend = "none")
 
 p2 <- 
