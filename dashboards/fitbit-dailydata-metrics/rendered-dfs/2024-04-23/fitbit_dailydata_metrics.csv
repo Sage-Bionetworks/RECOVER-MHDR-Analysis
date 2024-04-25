@@ -1,0 +1,5 @@
+"type","n_participants","n_records","avg_days","avg_days_since_connected","prop_avg_days_since_connected"
+"heartrate",1959,176439,90.1,87.1,0.526
+"activity",1957,176464,90.2,87.2,0.527
+"spo2",1959,176528,90.1,87.1,0.527
+"hrv",1959,176528,90.1,87.1,0.527
