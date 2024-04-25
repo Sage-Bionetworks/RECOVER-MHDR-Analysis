@@ -200,7 +200,6 @@ symptomlog_treatments <-
   arrow::open_dataset(
     s3$path(
       dataset_paths[grep(".*dataset_symptomlog_value_treatments$", dataset_paths)]))
-tictoc::toc()
 ```
 
 
@@ -337,6 +336,7 @@ devices_per_pid_fitbit <-
 devices_per_pid_googlefit <- 
   googlefit %>% 
   select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
+  collect() %>% 
   rename(DeviceModel=OriginalDataSourceDeviceModel,
          DeviceType=OriginalDataSourceDeviceType) %>% 
   group_by(ParticipantIdentifier) %>% 
@@ -345,8 +345,7 @@ devices_per_pid_googlefit <-
   count() %>% 
   ungroup() %>% 
   rename(n_participants = n) %>% 
-  mutate(dataset = 'googlefit') %>% 
-  collect()
+  mutate(dataset = 'googlefit')
 
 devices_per_pid_hk <- 
   hk_devices %>% 
