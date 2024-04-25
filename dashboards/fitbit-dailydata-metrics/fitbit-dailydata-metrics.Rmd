@@ -30,7 +30,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2024-02-29"
+ARCHIVE_VERSION <- "2024-04-23"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/fitbit-dailydata-metrics/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/fitbit-dailydata-metrics/rendered-dfs/{ARCHIVE_VERSION}/"))
@@ -72,6 +72,11 @@ for (dataset in dataset_list) {
 ```
 
 ```{r open datasets, include=FALSE}
+bounds <- 
+  data.frame(vars = c("HeartRateIntradayMinuteCount", "Steps", "SpO2_Avg", "Hrv_DailyRmssd"),
+             lower = c(0, 0, 50, 3),
+             upper = c(1440, 200000, 100, 210))
+
 fitbitdailydata <- 
   arrow::open_dataset(
     s3$path(
@@ -89,8 +94,14 @@ fitbitdailydata <-
     SpO2_Avg = as.numeric(SpO2_Avg),
     Hrv_DailyRmssd = as.numeric(Hrv_DailyRmssd)) %>% 
   collect() %>% 
-  # filter((!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>%
-  #          tidyr::replace_na(TRUE)) %>% 
+  # filter(
+  #   (!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>% 
+  #     tidyr::replace_na(TRUE)
+  #   ) %>% 
+  filter(between(HeartRateIntradayMinuteCount, bounds$lower[which(bounds$vars=="HeartRateIntradayMinuteCount")], bounds$upper[which(bounds$vars=="HeartRateIntradayMinuteCount")]),
+         between(Steps, bounds$lower[which(bounds$vars=="Steps")], bounds$upper[which(bounds$vars=="Steps")]),
+         between(SpO2_Avg, bounds$lower[which(bounds$vars=="SpO2_Avg")], bounds$upper[which(bounds$vars=="SpO2_Avg")]),
+         between(Hrv_DailyRmssd, bounds$lower[which(bounds$vars=="Hrv_DailyRmssd")], bounds$upper[which(bounds$vars=="Hrv_DailyRmssd")])) %>% 
   rename(
     spo2_avg = SpO2_Avg,
     hrv = Hrv_DailyRmssd)
@@ -185,13 +196,13 @@ days_present_nonzero_per_participant_hr_df <-
 kd <-
   hist(
     days_present_nonzero_per_participant_hr_df$days_present_nonzero,
-    # breaks = seq(0, 1100, by = 50),
+    breaks = seq(0, 600, by = 50),
     labels = TRUE,
     xlab = "Number of Days",
     ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: Heart Rate"
   )
-axis(1, at = seq(0, 1100, by = 100))
+axis(1, at = seq(0, 600, by = 100))
 
 # days_present_nonzero_per_participant_hr_df %>%
 #   ggpubr::gghistogram(x = "days_present_nonzero",
@@ -328,13 +339,13 @@ days_present_nonzero_per_participant_steps_df <-
 kd3 <- 
   hist(
     days_present_nonzero_per_participant_steps_df$days_present_nonzero, 
-    breaks = seq(0, 2000, by = 50),
+    breaks = seq(0, 600, by = 50),
     labels = T,
     xlab = "Number of Days",
     ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: Steps (Activity)"
   )
-axis(1, at = seq(0, 2000, by = 100))
+axis(1, at = seq(0, 600, by = 100))
 
 # kd3 <- density(days_present_nonzero_per_participant_steps_df$days_present_nonzero, bw = "SJ")
 # plot(kd3, main = "Number of Days of Data per Participant", sub = "Activity: Steps")
@@ -403,7 +414,7 @@ insights_steps <-
   data.frame(
     "device" = "fitbit",
     "category" = "activity",
-    "measure" = "steps",
+    "measure" = "Steps",
     "n_records" = num_records_total(fitbitdailydata, "Steps"),
     "n_complete" = num_records_complete(fitbitdailydata, "Steps"),
     "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata, "Steps"),
@@ -430,7 +441,7 @@ days_present_nonzero_per_participant_spo2_df <-
 kd5 <- 
   hist(
     days_present_nonzero_per_participant_spo2_df$days_present_nonzero, 
-    # breaks = seq(0, 600, by = 50),
+    breaks = seq(0, 600, by = 50),
     labels = T,
     xlab = "Number of Days",
     ylab = "Number of Participants",
@@ -505,7 +516,7 @@ insights_spo2 <-
   data.frame(
     "device" = "fitbit",
     "category" = "spo2",
-    "measure" = "spo2",
+    "measure" = "SpO2_Avg",
     "n_records" = num_records_total(fitbitdailydata, "spo2_avg"),
     "n_complete" = num_records_complete(fitbitdailydata, "spo2_avg"),
     "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata, "spo2_avg"),
@@ -607,7 +618,7 @@ insights_hrv <-
   data.frame(
     "device" = "fitbit",
     "category" = "hrv",
-    "measure" = "hrv",
+    "measure" = "Hrv_DailyRmssd",
     "n_records" = num_records_total(fitbitdailydata, "hrv"),
     "n_complete" = num_records_complete(fitbitdailydata, "hrv"),
     "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata, "hrv"),
@@ -675,7 +686,7 @@ insights %>%
   select(all_of(c("device", 
                   "category", 
                   "measure", 
-                  "n_records", 
+                  # "n_records", 
                   "n_complete", 
                   "n_complete_nonzero"))) %>% 
   knitr::kable(format = "markdown",
@@ -684,7 +695,7 @@ insights %>%
 ```
 
 **Note:**
-- `n_records` = Number of records
+<!-- - `n_records` = Number of records -->
 - `n_complete` = Number of complete records
 - `n_complete_nonzero` = Number of complete non-zero records
 
@@ -763,7 +774,7 @@ insights %>%
 ```
 
 **Note:**
-- `avg_total_wear_time` = Average total wear time since `DevicesConnectedDate` across all participants
+- `avg_total_wear_time` = Average total wear time (minutes) since `DevicesConnectedDate` across all participants
 - `prop_avg_total_wear_time` = Proportion of average total wear time since `DevicesConnectedDate` across all participants
 
 </details>
