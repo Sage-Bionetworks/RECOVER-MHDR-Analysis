@@ -374,6 +374,9 @@ mismatch_pids <-
       unique() %>% 
       sort() %>% 
       setdiff(fitbit_devices %>% 
+                select(ParticipantIdentifier, Device) %>% 
+                # collect() %>% 
+                filter(!(is.na(Device))) %>%
                 pull(ParticipantIdentifier) %>% 
                 unique() %>% 
                 sort()),
@@ -385,8 +388,21 @@ mismatch_pids <-
       sort() %>% 
       setdiff(googlefit %>% 
                 select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
-                collect() %>% 
-                drop_na() %>% 
+                # collect() %>% 
+                filter(!(is.na(OriginalDataSourceDeviceModel) & is.na(OriginalDataSourceDeviceType))) %>% 
+                pull(ParticipantIdentifier) %>% 
+                unique() %>% 
+                sort()),
+    healthkit = 
+      all_participants_by_dataset %>% 
+      filter(dataset=="healthkit") %>% 
+      pull(ParticipantIdentifier) %>% 
+      unique() %>% 
+      sort() %>% 
+      setdiff(hk_devices %>% 
+                select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
+                # collect() %>% 
+                filter(!(is.na(Device_Model) & is.na(Device_HardwareVersion) & is.na(Source_Identifier))) %>% 
                 pull(ParticipantIdentifier) %>% 
                 unique() %>% 
                 sort())
@@ -738,29 +754,89 @@ E.g. N participant IDs were found in the 'fitbit_activitylogs' dataset but not i
 
 #### Fitbit
 
-```{r device data mismatch fitbit viz, echo=FALSE, include=FALSE}
-pq_device_pids_mismatch_fitbit <- 
+```{r device data mismatch fitbit viz, echo=FALSE}
+
+pq_device_pids_mismatch <- list()
+
+pq_device_pids_mismatch$fitbit <- 
   data.frame(
-    dataset = c("activitylogs", "dailydata", "intradaycombined", "restingheartrate", "sleeplogs"),
+    dataset = c("activitylogs", "dailydata", "intradaycombined", "restingheartrate", "sleeplogs", "ecg"),
     n_participants = c(
       mismatch_pids$fitbit %>% intersect(fitbit_actlogs %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
       mismatch_pids$fitbit %>% intersect(fitbit_dailydata %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
       mismatch_pids$fitbit %>% intersect(fitbit_intracomb %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
       mismatch_pids$fitbit %>% intersect(fitbit_rhr %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
-      mismatch_pids$fitbit %>% intersect(fitbit_sleeplogs %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length()
+      mismatch_pids$fitbit %>% intersect(fitbit_sleeplogs %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$fitbit %>% intersect(fitbit_ecg %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length()
     )
   ) %>% 
   arrange(desc(n_participants))
 
-pq_device_pids_mismatch_fitbit %>% 
+pq_device_pids_mismatch$fitbit %>% 
   ggpubr::ggbarplot(x = "dataset",
                     y = "n_participants",
                     label = T,
                     fill = "grey25",
                     color = "grey25")
 
-write.csv(pq_device_pids_mismatch_fitbit,
+write.csv(pq_device_pids_mismatch$fitbit,
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_device_pids_mismatch_fitbit.csv'), 
+          row.names = F)
+```
+
+
+#### Google Fit
+
+```{r device data mismatch fitbit viz, echo=FALSE}
+pq_device_pids_mismatch$googlefit <- 
+  data.frame(
+    dataset = c("googlefit"),
+    n_participants = c(
+      mismatch_pids$googlefit %>% intersect(googlefit %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length()
+    )
+  ) %>% 
+  arrange(desc(n_participants))
+
+pq_device_pids_mismatch$googlefit %>% 
+  ggpubr::ggbarplot(x = "dataset",
+                    y = "n_participants",
+                    label = T,
+                    fill = "grey25",
+                    color = "grey25")
+
+write.csv(pq_device_pids_mismatch$googlefit,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_device_pids_mismatch_googlefit.csv'),
+          row.names = F)
+```
+
+
+#### HealthKit
+
+```{r device data mismatch fitbit viz, echo=FALSE}
+
+pq_device_pids_mismatch$healthkit <- 
+  data.frame(
+    dataset = c("activitysummaries", "ecg", "heartbeat", "samples", "stats", "workouts"),
+    n_participants = c(
+      mismatch_pids$healthkit %>% intersect(hk_activitysummaries %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$healthkit %>% intersect(hk_ecg %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$healthkit %>% intersect(hk_heartbeat %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$healthkit %>% intersect(hk_samples %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$healthkit %>% intersect(hk_stats %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length(),
+      mismatch_pids$healthkit %>% intersect(hk_workouts %>% pull(ParticipantIdentifier) %>% unique() %>% sort()) %>% length()
+    )
+  ) %>% 
+  arrange(desc(n_participants))
+
+pq_device_pids_mismatch$healthkit %>% 
+  ggpubr::ggbarplot(x = "dataset",
+                    y = "n_participants",
+                    label = T,
+                    fill = "grey25",
+                    color = "grey25")
+
+write.csv(pq_device_pids_mismatch$healthkit,
+          glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/parquet_device_pids_mismatch_healthkit.csv'),
           row.names = F)
 ```
 
