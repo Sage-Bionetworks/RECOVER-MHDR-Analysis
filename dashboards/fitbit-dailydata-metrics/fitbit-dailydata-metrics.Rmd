@@ -806,8 +806,14 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 DASHBOARD_FOLDER_SYNID <- "syn58643693"
 FOLDER_NAME <- "Fitbit DailyData Metrics"
 
-knit2synapse:::createAndKnitToFolderEntityClient(
-  file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
-  parentId = DASHBOARD_FOLDER_SYNID,
-  folderName = FOLDER_NAME)
+# knit2synapse:::createAndKnitToFolderEntityClient(
+#   file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
+#   parentId = DASHBOARD_FOLDER_SYNID,
+#   folderName = FOLDER_NAME)
+
+knit2synapse::knitfile2synapse(file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
+                               owner = "syn51105296",
+                               parentWikiId = '627717',
+                               wikiName = FOLDER_NAME,
+                               overwrite = TRUE)
 ```

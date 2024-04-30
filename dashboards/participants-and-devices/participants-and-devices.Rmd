@@ -909,9 +909,15 @@ syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 DASHBOARD_FOLDER_SYNID <- "syn58643693"
 FOLDER_NAME <- "Participants and Devices"
 
-knit2synapse:::createAndKnitToFolderEntityClient(
-  file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
-  parentId = DASHBOARD_FOLDER_SYNID,
-  folderName = FOLDER_NAME)
+# knit2synapse:::createAndKnitToFolderEntityClient(
+#   file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
+#   parentId = DASHBOARD_FOLDER_SYNID,
+#   folderName = FOLDER_NAME)
+
+knit2synapse::knitfile2synapse(file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
+                               owner = "syn51105296",
+                               parentWikiId = '627716',
+                               wikiName = FOLDER_NAME,
+                               overwrite = TRUE)
 tictoc::toc()
 ```
