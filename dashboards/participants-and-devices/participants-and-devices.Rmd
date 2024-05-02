@@ -575,7 +575,8 @@ pq_pids_by_fitbit_devices <-
   group_by(Device, Type) %>% 
   summarise(n_participants = n_distinct(ParticipantIdentifier), .groups = 'keep') %>% 
   arrange(desc(n_participants)) %>% 
-  collect()
+  collect() %>% 
+  ungroup()
 
 pq_pids_by_fitbit_devices %>% 
   ggpubr::ggbarplot(x = "Device",
@@ -672,7 +673,7 @@ pq_filtered_pids_by_hk <-
     Device_HardwareVersion,
     ifelse(
       !is.na(Device_Model) &
-        grepl("withings|garmin|oura", Device_Model, ignore.case = TRUE),
+        grepl("withings|garmin|oura|polar", Device_Model, ignore.case = TRUE),
       Device_Model,
       Source_Identifier
     )
@@ -842,8 +843,86 @@ write.csv(pq_device_pids_mismatch$healthkit,
 
 ## Current State of Data
 
-```{r current state of data table, echo=FALSE}
-row_vals <- c("Participants", "Watch/Tracker", "TotalRecords")
+```{r current state of data table fitbit calc, echo=FALSE}
+tmp_pids_fitbit_devices <- 
+  fitbit_devices %>%
+  select(ParticipantIdentifier, Device, Type) %>%
+  collect() %>%
+  group_by(ParticipantIdentifier, Device, Type) %>%
+  arrange(Device) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  group_by(ParticipantIdentifier) %>% 
+  mutate(n_devices = n_distinct(Device)) %>% 
+  arrange(ParticipantIdentifier) %>% 
+  mutate(mb = ifelse(Device=="MobileTrack", 1, 0)) %>% 
+  ungroup()
+
+mobile_track_pids <- 
+  tmp_pids_fitbit_devices %>% 
+  filter(n_devices==1, mb==1) %>% 
+  pull(ParticipantIdentifier) %>% 
+  unique()
+
+non_mobile_track_pids <- 
+  tmp_pids_fitbit_devices %>% 
+  filter(mb==0) %>% 
+  filter(!(ParticipantIdentifier %in% mobile_track_pids))
+```
+
+
+```{r current state of data table healthkit, echo=FALSE}
+tmp_filtered_pids_hk <-
+  hk_devices %>%
+  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier) %>%
+  mutate(Source_Identifier = str_to_lower(Source_Identifier)) %>%
+  mutate(Source = ifelse(
+    !is.na(Device_HardwareVersion) &
+      grepl("Watch|iPhone", Device_HardwareVersion, ignore.case = TRUE),
+    Device_HardwareVersion,
+    ifelse(
+      !is.na(Device_Model) &
+        grepl("withings|garmin|oura|polar", Device_Model, ignore.case = TRUE),
+      Device_Model,
+      Source_Identifier
+    )
+  )) %>%
+  select(ParticipantIdentifier, Source) %>% 
+  group_by(ParticipantIdentifier, Source) %>% 
+  arrange(Source) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  group_by(ParticipantIdentifier) %>% 
+  mutate(n_devices = n_distinct(Source)) %>% 
+  ungroup() %>% 
+  arrange(ParticipantIdentifier) %>% 
+  filter(str_detect(Source, ".*Watch.*|.*watch.*", negate = FALSE)) %>% 
+  filter(str_detect(Source, ".*watche.*|.*owatch.*", negate = TRUE))
+```
+
+
+```{r current state of data table googlefit, echo=FALSE}
+tmp_pids_googlefit <- 
+  googlefit %>% 
+  select(ParticipantIdentifier, OriginalDataSourceDeviceModel, OriginalDataSourceDeviceType) %>% 
+  rename(DeviceModel=OriginalDataSourceDeviceModel,
+         DeviceType=OriginalDataSourceDeviceType) %>% 
+  filter(!(is.na(DeviceModel) & is.na(DeviceType))) %>% 
+  group_by(ParticipantIdentifier, DeviceModel) %>% 
+  arrange(DeviceModel) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  group_by(ParticipantIdentifier) %>% 
+  collect() %>% 
+  mutate(n_devices = n_distinct(DeviceModel)) %>% 
+  ungroup() %>% 
+  arrange(ParticipantIdentifier) %>% 
+  filter(DeviceType=="WATCH")
+```
+
+
+```{r current state of data table combine and output, echo=FALSE}
+row_vals <- c("Participants", "Watch/Tracker", "Total Records")
 col_vals <- c("Fitbit", "HealthKit", "GoogleFit", "Symptoms", "Total")
 
 curr_state <- matrix(data = NA, nrow = length(row_vals), ncol = length(col_vals))
@@ -852,14 +931,9 @@ colnames(curr_state) <- col_vals
 
 curr_state[1,] <- pq_pids_by_dataset$n_participants
 
-curr_state[2, 1] <- 
-  pq_pids_by_fitbit_devices$n_participants[
-    which(pq_pids_by_fitbit_devices$Type=="TRACKER"&pq_pids_by_fitbit_devices$Device!="MobileTrack")
-  ] %>% 
-  sum()
-
-curr_state[2, 2] <- pq_filtered_pids_by_hk$n_participants[which(grepl("Watch*", pq_filtered_pids_by_hk$Source))] %>% sum()
-curr_state[2, 3] <- pq_pids_by_googlefit$n_participants[which(pq_pids_by_googlefit$DeviceType=="WATCH")] %>% sum()
+curr_state[2, 1] <- non_mobile_track_pids %>% select(ParticipantIdentifier) %>% n_distinct()
+curr_state[2, 2] <- tmp_filtered_pids_hk %>% select(ParticipantIdentifier) %>% n_distinct()
+curr_state[2, 3] <- tmp_pids_googlefit %>% select(ParticipantIdentifier) %>% n_distinct()
 curr_state[2, 4] <- NA
 curr_state[2, 5] <- curr_state[2, 1] + curr_state[2, 2] + curr_state[2, 3]
 
