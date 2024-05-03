@@ -93,18 +93,27 @@ fitbitdailydata <-
     Steps = as.numeric(Steps),
     SpO2_Avg = as.numeric(SpO2_Avg),
     Hrv_DailyRmssd = as.numeric(Hrv_DailyRmssd)) %>% 
-  collect() %>% 
+  rename(
+    spo2_avg = SpO2_Avg,
+    hrv = Hrv_DailyRmssd) %>% 
+  collect()
+
+fitbitdailydata_steps_hrimc_filter_as_na <- 
+  fitbitdailydata %>% 
+  mutate(Steps = ifelse(test = (Steps==0 &
+                                  (HeartRateIntradayMinuteCount==0 |
+                                     is.na(HeartRateIntradayMinuteCount))),
+                        yes = NA,
+                        no = Steps),
+         HeartRateIntradayMinuteCount = ifelse(test = (Steps==0 &
+                                                         (HeartRateIntradayMinuteCount==0 |
+                                                            is.na(HeartRateIntradayMinuteCount))),
+                                               yes = NA,
+                                               no = HeartRateIntradayMinuteCount))
   # filter(
   #   (!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>% 
   #     tidyr::replace_na(TRUE)
   #   ) %>% 
-  filter(between(HeartRateIntradayMinuteCount, bounds$lower[which(bounds$vars=="HeartRateIntradayMinuteCount")], bounds$upper[which(bounds$vars=="HeartRateIntradayMinuteCount")]),
-         between(Steps, bounds$lower[which(bounds$vars=="Steps")], bounds$upper[which(bounds$vars=="Steps")]),
-         between(SpO2_Avg, bounds$lower[which(bounds$vars=="SpO2_Avg")], bounds$upper[which(bounds$vars=="SpO2_Avg")]),
-         between(Hrv_DailyRmssd, bounds$lower[which(bounds$vars=="Hrv_DailyRmssd")], bounds$upper[which(bounds$vars=="Hrv_DailyRmssd")])) %>% 
-  rename(
-    spo2_avg = SpO2_Avg,
-    hrv = Hrv_DailyRmssd)
 
 enrolledparticipants <- 
   arrow::open_dataset(
@@ -137,18 +146,13 @@ num_records_complete_nonzero <- function(df, measure) {
 }
 
 num_participants_with_records <- function(df, measure) {
-  df$ParticipantIdentifier[
-    !is.na(df[[measure]])
-  ] %>%
+  df$ParticipantIdentifier[!is.na(df[[measure]])] %>%
     unique() %>%
     length()
 }
 
 num_participants_with_records_nonzero <- function(df, measure) {
-  df$ParticipantIdentifier[
-    !is.na(df[[measure]]) &
-      df[[measure]]!=0
-  ] %>%
+  df$ParticipantIdentifier[!is.na(df[[measure]]) & df[[measure]]!=0] %>%
     unique() %>%
     length()
 }
@@ -158,7 +162,11 @@ days_present_nonzero_per_participant <- function(df, measure) {
     select(ParticipantIdentifier, Date, measure) %>% 
     mutate(Date = as_date(Date)) %>% 
     drop_na() %>% 
-    filter(.[[measure]]!=0) %>% 
+    filter(.[[measure]]!=0) %>%
+    # mutate(measure = ifelse(test = measure >= subset(bounds$lower, bounds$vars==measure) & 
+    #                           measure <= subset(bounds$upper, bounds$vars==measure),
+    #                         yes = measure,
+    #                         no = NA)) %>% 
     group_by(ParticipantIdentifier) %>% 
     distinct(Date, .keep_all = T) %>% 
     summarise(days_present_nonzero = n()) %>% 
@@ -196,7 +204,7 @@ days_present_nonzero_per_participant_hr_df <-
 kd <-
   hist(
     days_present_nonzero_per_participant_hr_df$days_present_nonzero,
-    breaks = seq(0, 600, by = 50),
+    # breaks = seq(0, 600, by = 50),
     labels = TRUE,
     xlab = "Number of Days",
     ylab = "Number of Participants",
