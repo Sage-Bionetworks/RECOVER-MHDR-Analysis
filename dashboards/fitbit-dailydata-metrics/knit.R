@@ -1,4 +1,4 @@
-tictoc::tic("INFO: Fitbit DailyData Metrics markdown knit2synapse")
+tictoc::tic("INFO: Fitbit DailyData Metrics markdown knit to archive folder")
 
 synapseclient <- reticulate::import("synapseclient")
 syn_temp <- synapseclient$Synapse()
@@ -10,10 +10,14 @@ synapser::synLogin()
 DASHBOARD_FOLDER_SYNID <- "syn58643693"
 FOLDER_NAME <- "Fitbit DailyData Metrics"
 
-# knit2synapse:::createAndKnitToFolderEntityClient(
-#   file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
-#   parentId = DASHBOARD_FOLDER_SYNID,
-#   folderName = FOLDER_NAME)
+knit2synapse:::createAndKnitToFolderEntityClient(
+  file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
+  parentId = DASHBOARD_FOLDER_SYNID,
+  folderName = FOLDER_NAME)
+
+tictoc::toc()
+
+tictoc::tic("INFO: Fitbit DailyData Metrics markdown knit to project wiki")
 
 knit2synapse::knitfile2synapse(
   file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",

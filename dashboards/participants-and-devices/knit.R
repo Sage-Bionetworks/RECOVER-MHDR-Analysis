@@ -1,4 +1,4 @@
-tictoc::tic("INFO: Participants and Devices markdown knit2synapse")
+tictoc::tic("INFO: Participants and Devices markdown markdown knit to archive folder")
 
 synapseclient <- reticulate::import("synapseclient")
 syn_temp <- synapseclient$Synapse()
@@ -15,11 +15,15 @@ knit2synapse:::createAndKnitToFolderEntityClient(
   parentId = DASHBOARD_FOLDER_SYNID,
   folderName = FOLDER_NAME)
 
-# knit2synapse::knitfile2synapse(
-#   file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
-#   owner = "syn51105296",
-#   parentWikiId = '627716',
-#   wikiName = FOLDER_NAME,
-#   overwrite = TRUE)
+tictoc::toc()
+
+tictoc::tic("INFO: Participants and Devices markdown knit to project wiki")
+
+knit2synapse::knitfile2synapse(
+  file = "dashboards/participants-and-devices/participants-and-devices.Rmd",
+  owner = "syn51105296",
+  parentWikiId = '627716',
+  wikiName = FOLDER_NAME,
+  overwrite = TRUE)
 
 tictoc::toc()
