@@ -43,94 +43,6 @@ if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/fitbit-dailydata-metrics/rend
 
 Using data from external parquet archive version: `r ARCHIVE_VERSION`
 
-```{r access data, include=FALSE, message=FALSE, warning=FALSE}
-
-synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
-
-sts_token <- 
-  synapser::synGetStsStorageToken(
-    entity = 'syn52506069',
-    permission = 'read_only',
-    output_format = 'json')
-
-s3 <- 
-  arrow::S3FileSystem$create(
-    access_key = sts_token$accessKeyId,
-    secret_key = sts_token$secretAccessKey,
-    session_token = sts_token$sessionToken,
-    region="us-east-1")
-
-bucket_path <- paste0(sts_token$bucket, '/', 
-                      sts_token$baseKey, '/', 
-                      ARCHIVE_VERSION, '/')
-
-dataset_list <- 
-  s3$GetFileInfo(
-    arrow::FileSelector$create(
-      bucket_path, 
-      recursive=F))
-
-dataset_paths <- character()
-for (dataset in dataset_list) {
-  dataset_paths <- c(dataset_paths, dataset$path)
-}
-
-```
-
-```{r collect/create starter datasets, include=FALSE}
-
-bounds <- 
-  data.frame(vars = c("HeartRateIntradayMinuteCount", "Steps", "SpO2_Avg", "Hrv_DailyRmssd"),
-             lower = c(0, 0, 50, 3),
-             upper = c(1440, 200000, 100, 210))
-
-fitbitdailydata <- 
-  arrow::open_dataset(
-    s3$path(
-      dataset_paths[grep(".*dataset_fitbitdailydata$", dataset_paths)])) %>% 
-  select(all_of(c("ParticipantIdentifier", 
-                  "Date", 
-                  "cohort", 
-                  "HeartRateIntradayMinuteCount", 
-                  "Steps", 
-                  "SpO2_Avg", 
-                  "Hrv_DailyRmssd"))) %>% 
-  mutate(
-    HeartRateIntradayMinuteCount = as.numeric(HeartRateIntradayMinuteCount),
-    Steps = as.numeric(Steps),
-    SpO2_Avg = as.numeric(SpO2_Avg),
-    Hrv_DailyRmssd = as.numeric(Hrv_DailyRmssd)) %>% 
-  rename(
-    spo2_avg = SpO2_Avg,
-    hrv = Hrv_DailyRmssd) %>% 
-  collect()
-
-fitbitdailydata_steps_hrimc_filter_as_na <- 
-  fitbitdailydata %>% 
-  mutate(Steps = ifelse(test = (Steps==0 &
-                                  (HeartRateIntradayMinuteCount==0 |
-                                     is.na(HeartRateIntradayMinuteCount))),
-                        yes = NA,
-                        no = Steps),
-         HeartRateIntradayMinuteCount = ifelse(test = (Steps==0 &
-                                                         (HeartRateIntradayMinuteCount==0 |
-                                                            is.na(HeartRateIntradayMinuteCount))),
-                                               yes = NA,
-                                               no = HeartRateIntradayMinuteCount))
-  # filter(
-  #   (!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>% 
-  #     tidyr::replace_na(TRUE)
-  #   ) %>% 
-
-enrolledparticipants <- 
-  arrow::open_dataset(
-    s3$path(
-      dataset_paths[grep(".*dataset_enrolledparticipants$", dataset_paths)])) %>% 
-  select(ParticipantIdentifier, CustomFields_DevicesConnectedDate) %>% 
-  collect()
-
-```
-
 ```{r helper functions, include=FALSE}
 
 num_records_total <- function(df, measure) {
@@ -170,12 +82,24 @@ days_present_nonzero_per_participant <- function(df, measure) {
   df %>% 
     select(ParticipantIdentifier, Date, measure) %>% 
     mutate(Date = as_date(Date)) %>% 
-    drop_na() %>% 
+    drop_na(measure) %>% 
     filter(.[[measure]]!=0) %>%
-    # mutate(measure = ifelse(test = measure >= subset(bounds$lower, bounds$vars==measure) & 
-    #                           measure <= subset(bounds$upper, bounds$vars==measure),
-    #                         yes = measure,
-    #                         no = NA)) %>% 
+    group_by(ParticipantIdentifier) %>% 
+    distinct(Date, .keep_all = T) %>% 
+    summarise(days_present_nonzero = n()) %>% 
+    ungroup() %>% 
+    mutate(log10_days_present_nonzero = log10(days_present_nonzero))
+}
+
+days_present_qaqc_bounded_per_participant <- function(df, measure) {
+  df %>% 
+    select(ParticipantIdentifier, Date, measure) %>% 
+    mutate(Date = as_date(Date)) %>% 
+    drop_na(measure) %>% 
+    mutate(measure = ifelse(test = measure >= subset(bounds$lower, bounds$vars==measure) &
+                              measure <= subset(bounds$upper, bounds$vars==measure),
+                            yes = measure,
+                            no = NA)) %>%
     group_by(ParticipantIdentifier) %>% 
     distinct(Date, .keep_all = T) %>% 
     summarise(days_present_nonzero = n()) %>% 
@@ -189,7 +113,174 @@ avg_days_present_nonzero <- function(df, col) {
 
 ```
 
-## Heart Rate
+```{r access data, include=FALSE, message=FALSE, warning=FALSE}
+
+synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
+
+sts_token <- 
+  synapser::synGetStsStorageToken(
+    entity = 'syn52506069',
+    permission = 'read_only',
+    output_format = 'json')
+
+s3 <- 
+  arrow::S3FileSystem$create(
+    access_key = sts_token$accessKeyId,
+    secret_key = sts_token$secretAccessKey,
+    session_token = sts_token$sessionToken,
+    region="us-east-1")
+
+bucket_path <- paste0(sts_token$bucket, '/', 
+                      sts_token$baseKey, '/', 
+                      ARCHIVE_VERSION, '/')
+
+dataset_list <- 
+  s3$GetFileInfo(
+    arrow::FileSelector$create(
+      bucket_path, 
+      recursive=F))
+
+dataset_paths <- character()
+for (dataset in dataset_list) {
+  dataset_paths <- c(dataset_paths, dataset$path)
+}
+
+```
+
+# Data Pre-Processing
+
+```{r collect/create base datasets, include=FALSE}
+
+bounds <- 
+  data.frame(vars = c("HeartRateIntradayMinuteCount", "Steps", "SpO2_Avg", "Hrv_DailyRmssd"),
+             lower = c(0, 0, 50, 3),
+             upper = c(1440, 200000, 100, 210))
+
+fitbitdailydata <- 
+  arrow::open_dataset(
+    s3$path(
+      dataset_paths[grep(".*dataset_fitbitdailydata$", dataset_paths)])) %>% 
+  select(all_of(c("ParticipantIdentifier", 
+                  "Date", 
+                  "cohort", 
+                  "HeartRateIntradayMinuteCount", 
+                  "Steps", 
+                  "SpO2_Avg", 
+                  "Hrv_DailyRmssd"))) %>% 
+  mutate(
+    HeartRateIntradayMinuteCount = as.numeric(HeartRateIntradayMinuteCount),
+    Steps = as.numeric(Steps),
+    SpO2_Avg = as.numeric(SpO2_Avg),
+    Hrv_DailyRmssd = as.numeric(Hrv_DailyRmssd)) %>% 
+  rename(
+    spo2_avg = SpO2_Avg,
+    hrv = Hrv_DailyRmssd) %>% 
+  collect() %>% 
+  mutate(Date = as_date(Date))
+
+enrolledparticipants <- 
+  arrow::open_dataset(
+    s3$path(
+      dataset_paths[grep(".*dataset_enrolledparticipants$", dataset_paths)])) %>% 
+  select(ParticipantIdentifier, CustomFields_DevicesConnectedDate) %>% 
+  collect()
+
+```
+
+**Raw data**
+
+```{r data preprocessing}
+
+data.frame(n_participants = 
+             fitbitdailydata %>% 
+             select(ParticipantIdentifier) %>% 
+             n_distinct(),
+           n_records = 
+             fitbitdailydata %>% 
+             n_distinct()) %>% 
+  knitr::kable(format = "markdown", format.args = list(digits = 3, big.mark = ","))
+
+```
+
+**Transformation 1**: If `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)`, set Steps and HRIMC to 0
+
+The counts below are after excluding participants/records where `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)` for a given record.
+
+```{r steps_hrimc_filtered data}
+fitbitdailydata_steps_hrimc_filter <- 
+  fitbitdailydata %>% 
+  mutate(Steps = ifelse(test = (Steps==0 &
+                                  (HeartRateIntradayMinuteCount==0 |
+                                     is.na(HeartRateIntradayMinuteCount))),
+                        yes = 0,
+                        no = Steps),
+         HeartRateIntradayMinuteCount = ifelse(test = (Steps==0 &
+                                                         (HeartRateIntradayMinuteCount==0 |
+                                                            is.na(HeartRateIntradayMinuteCount))),
+                                               yes = 0,
+                                               no = HeartRateIntradayMinuteCount))
+  # filter(
+  #   (!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>% 
+  #     tidyr::replace_na(TRUE)
+  #   )
+
+data.frame(n_participants = 
+             fitbitdailydata_steps_hrimc_filter %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             select(ParticipantIdentifier) %>% 
+             n_distinct(),
+           n_records = 
+             fitbitdailydata_steps_hrimc_filter %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             n_distinct()) %>% 
+  knitr::kable(format = "markdown", format.args = list(digits = 3, big.mark = ","))
+
+```
+
+**Transformation 2**: Replace records whose values are outside a pre-specified range with `NA`
+
+```{r qa/qc range filtering}
+
+fitbitdailydata_steps_hrimc_and_qaqc_transform <- 
+  fitbitdailydata_steps_hrimc_filter %>% 
+  mutate(HeartRateIntradayMinuteCount = 
+           ifelse(test = 
+                    HeartRateIntradayMinuteCount >= subset(bounds$lower, bounds$vars=="HeartRateIntradayMinuteCount") &
+                    HeartRateIntradayMinuteCount <= subset(bounds$upper, bounds$vars=="HeartRateIntradayMinuteCount"),
+                  yes = HeartRateIntradayMinuteCount,
+                  no = NA), 
+          Steps = ifelse(test = 
+                           Steps >= subset(bounds$lower, bounds$vars=="Steps") &
+                           Steps <= subset(bounds$upper, bounds$vars=="Steps"),
+                  yes = Steps,
+                  no = NA), 
+          spo2_avg = ifelse(test = 
+                              spo2_avg >= subset(bounds$lower, bounds$vars=="SpO2_Avg") &
+                              spo2_avg <= subset(bounds$upper, bounds$vars=="SpO2_Avg"),
+                  yes = spo2_avg,
+                  no = NA), 
+          hrv = ifelse(test = 
+                         hrv >= subset(bounds$lower, bounds$vars=="Hrv_DailyRmssd") &
+                         hrv <= subset(bounds$upper, bounds$vars=="Hrv_DailyRmssd"),
+                  yes = hrv,
+                  no = NA))
+
+data.frame(n_participants = 
+             fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             select(ParticipantIdentifier) %>% 
+             n_distinct(),
+           n_records = 
+             fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             n_distinct()) %>% 
+  knitr::kable(format = "markdown", format.args = list(digits = 3, big.mark = ","))
+
+```
+
+# Fitbit DailyData Metrics
+
+## HeartRateIntradayMinuteCount
 
 <details>
 
@@ -209,7 +300,36 @@ kd <-
     ylab = "Number of Participants",
     main = "Number of Participants with N Days of Non-Zero Data: Heart Rate"
   )
-axis(1, at = seq(0, 600, by = 100))
+# axis(1, at = seq(0, 600, by = 100))
+
+hist(
+    days_present_qaqc_bounded_per_participant(fitbitdailydata, "HeartRateIntradayMinuteCount")$days_present_nonzero,
+    # breaks = seq(0, 1000, by = 100),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Data: Heart Rate (within QA/QC bounds)"
+  )
+# axis(1, at = seq(0, 1000, by = 100))
+
+hist(
+    days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_filter, "HeartRateIntradayMinuteCount")$days_present_nonzero,
+    # breaks = seq(0, 600, by = 50),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data: Heart Rate ({Steps = 0} & {HRIMC = 0 | HRIMC = NA} as Zero-counts)"
+  )
+# axis(1, at = seq(0, 600, by = 100))
+
+hist(
+    days_present_qaqc_bounded_per_participant(fitbitdailydata_steps_hrimc_filter, "HeartRateIntradayMinuteCount")$days_present_nonzero,
+    # breaks = c(seq(0, 1000, by = 100), 6000),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Data: Heart Rate ({Steps = 0} & {HRIMC = 0 | HRIMC = NA} as Zero-counts, and within QA/QC bounds)"
+  )
 
 ```
 
