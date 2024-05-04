@@ -284,11 +284,11 @@ The data resulting from applying the transformations above is used to generate t
 
 ## HeartRateIntradayMinuteCount
 
-<details>
+<!-- <details> -->
 
-<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
 
-```{r heart rate calculations}
+```{r heart rate calculations, include=FALSE}
 
 days_present_nonzero_per_participant_hr_df <- 
   days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount")
@@ -306,7 +306,7 @@ kd <-
 
 ```
 
-</details>
+<!-- </details> -->
 
 <details open>
 
@@ -416,11 +416,11 @@ insights_hr <-
 
 ## Steps
 
-<details>
+<!-- <details> -->
 
-<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
 
-```{r activity steps calculations}
+```{r activity steps calculations, include=FALSE}
 
 days_present_nonzero_per_participant_steps_df <- 
   days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps")
@@ -438,7 +438,7 @@ axis(1, at = seq(0, 2000, by = 100))
 
 ```
 
-</details>
+<!-- </details> -->
 
 <details open>
 
@@ -535,11 +535,11 @@ insights_steps <-
 
 ## SpO2
 
-<details>
+<!-- <details> -->
 
-<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
 
-```{r spo2 calculations}
+```{r spo2 calculations, include=FALSE}
 
 days_present_nonzero_per_participant_spo2_df <- 
   days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg")
@@ -557,7 +557,7 @@ kd5 <-
 
 ```
 
-</details>
+<!-- </details> -->
 
 <details open>
 
@@ -654,11 +654,11 @@ insights_spo2 <-
 
 ## HRV
 
-<details>
+<!-- <details> -->
 
-<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary>
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
 
-```{r hrv calculations}
+```{r hrv calculations, include=FALSE}
 
 days_present_nonzero_per_participant_hrv_df <- 
   days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv")
@@ -676,7 +676,7 @@ axis(1, at = seq(0, 1000, by = 100))
 
 ```
 
-</details>
+<!-- </details> -->
 
 <details open>
 
@@ -771,7 +771,7 @@ insights_hrv <-
 
 </details>
 
-## Insights and Metrics Tables
+## Summary
 
 ```{r bind all calculations dfs}
 
