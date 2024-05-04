@@ -204,9 +204,9 @@ data.frame(n_participants =
 
 **Transformation 1**: If `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)`, set Steps and HRIMC to 0
 
-The counts below are after excluding participants/records where `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)` for a given record.
+<!-- The counts below are after excluding participants/records where `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)` for a given record. -->
 
-```{r steps_hrimc_filtered data}
+```{r steps_hrimc_filtered data, include=FALSE}
 fitbitdailydata_steps_hrimc_filter <- 
   fitbitdailydata %>% 
   mutate(Steps = ifelse(test = (Steps==0 &
@@ -239,7 +239,7 @@ data.frame(n_participants =
 
 **Transformation 2**: Replace records whose values are outside a pre-specified range with `NA`
 
-```{r qa/qc range filtering}
+```{r qa/qc range filtering, include=FALSE}
 
 fitbitdailydata_steps_hrimc_and_qaqc_transform <- 
   fitbitdailydata_steps_hrimc_filter %>% 
@@ -797,7 +797,7 @@ write.csv(fitbit_dailydata_metrics,
 
 ### At a Glance
 
-<details>
+<details open>
 
 <summary>Click to Expand</summary>
 
