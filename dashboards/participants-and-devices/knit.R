@@ -7,7 +7,7 @@ synapser::synLogin()
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn58643693"
+DASHBOARD_FOLDER_SYNID <- "syn59808089"
 FOLDER_NAME <- "Participants and Devices"
 
 knit2synapse:::createAndKnitToFolderEntityClient(

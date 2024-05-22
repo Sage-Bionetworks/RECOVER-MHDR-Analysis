@@ -33,7 +33,7 @@ library(ggpubr)
 
 synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
-ARCHIVE_VERSION <- "2024-04-23"
+ARCHIVE_VERSION <- "2024-05-21"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/fitbit-dailydata-metrics/rendered-dfs/"))) {
   dir.create(glue::glue("./dashboards/fitbit-dailydata-metrics/rendered-dfs/{ARCHIVE_VERSION}/"))
