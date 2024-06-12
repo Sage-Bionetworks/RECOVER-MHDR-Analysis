@@ -33,5 +33,5 @@ def import_dataset(parquet_dir_id, syn):
     dataset_paths = [x.path for x in dataset_list if "owner" not in x.path]
     data_path_names = [item.replace('recover-main-project/main/archive/2023-09-21/', '') for item in dataset_paths]
 
-    return dataset_paths, data_path_names, s3
+    return dataset_paths, data_path_names, s3, token
     
