@@ -168,9 +168,7 @@ hk_heartbeat_subsamples <-
 hk_samples <- 
   arrow::open_dataset(
     s3$path(
-      dataset_paths[grep(".*dataset_healthkitv2samples$", dataset_paths)])) %>% 
-  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate)
-
+      dataset_paths[grep(".*dataset_healthkitv2samples$", dataset_paths)]))
 hk_stats <- 
   arrow::open_dataset(
     s3$path(
@@ -264,7 +262,14 @@ all_participants_by_dataset <-
        mutate(dataset = 'healthkit') %>% collect()),
     (symptomlog %>% 
       select(ParticipantIdentifier) %>% 
-      mutate(dataset = 'symptomlog')) %>% collect()) %>% 
+      mutate(dataset = 'symptomlog') %>% collect()),
+    (symptomlog_symptoms %>% 
+      select(ParticipantIdentifier) %>% 
+      mutate(dataset = 'symptomlog') %>% collect()),
+    (symptomlog_treatments %>% 
+      select(ParticipantIdentifier) %>% 
+      mutate(dataset = 'symptomlog') %>% collect())
+  ) %>% 
   group_by(dataset, ParticipantIdentifier) %>% 
   distinct() %>% 
   ungroup()
@@ -274,47 +279,69 @@ all_participants_by_dataset <-
 ```{r merge healthkit device datasets, include=FALSE, cache.lazy=FALSE}
 
 # Unique HealthKit Devices ------------------------------------------------
-if (ARCHIVE_VERSION >= "2024-02-29") {
-  hk_devices <- bind_rows(
-    (hk_ecg %>% 
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       collect()),
-    (hk_heartbeat %>% 
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion,StartDate) %>% 
-       mutate(Source_Identifier = NA) %>% 
-       collect()),
-    (hk_samples %>%
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>%
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       collect()),
-    (hk_workouts %>% 
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
-       collect())
-  )
+hk_ecg_df <- hk_ecg %>% 
+  select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+  mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+  collect()
+
+if (ARCHIVE_VERSION >= "2024-06-13") {
+  hk_heartbeat_df <- hk_heartbeat %>% 
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, StartDate) %>% 
+    mutate(Source_Identifier = NA) %>% 
+    collect()
+  
+  hk_samples_df <- hk_samples %>%
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, StartDate) %>%
+    mutate(Source_Identifier = NA) %>%
+    collect()
+  
+  hk_workouts_df <- hk_workouts %>% 
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, StartDate) %>% 
+    mutate(Source_Identifier = NA) %>% 
+    group_by(Device_Model, Device_HardwareVersion) %>% 
+    collect()
+} else if (ARCHIVE_VERSION >= "2024-02-29") {
+  hk_heartbeat_df <- hk_heartbeat %>% 
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, StartDate) %>% 
+    mutate(Source_Identifier = NA) %>% 
+    collect()
+  
+  hk_samples_df <- hk_samples %>%
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, StartDate) %>%
+    mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>%
+    collect()
+  
+  hk_workouts_df <- hk_workouts %>% 
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+    mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+    group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
+    collect()
 } else {
-  hk_devices <- bind_rows(
-    (hk_ecg %>% 
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       collect()),
-    (hk_heartbeat %>% 
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       collect()),
-    (hk_samples %>%
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>%
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       collect()),
-    (hk_workouts %>% 
-       select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
-       mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
-       group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
-       collect())
-  )
+  hk_heartbeat_df <- hk_heartbeat %>% 
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+    mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+    collect()
+
+  hk_samples_df <- hk_samples %>%
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>%
+    mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+    collect()
+  
+  hk_workouts_df <- hk_workouts %>% 
+    select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier, StartDate) %>% 
+    mutate(Source_Identifier = gsub('com\\.apple\\.health.*', 'com.apple.health', Source_Identifier)) %>% 
+    group_by(Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
+    collect()
 }
+
+hk_devices <- bind_rows(
+  hk_ecg_df,
+  hk_heartbeat_df,
+  hk_samples_df,
+  hk_workouts_df
+)
+
+rm(hk_ecg_df, hk_heartbeat_df, hk_samples_df, hk_workouts_df)
 ```
 
 
@@ -349,6 +376,7 @@ devices_per_pid_googlefit <-
 
 devices_per_pid_hk <- 
   hk_devices %>% 
+  ungroup() %>% 
   select(ParticipantIdentifier, Device_HardwareVersion) %>% 
   group_by(ParticipantIdentifier) %>% 
   summarise(n_devices_per_participant = n_distinct(Device_HardwareVersion)) %>% 
@@ -356,8 +384,7 @@ devices_per_pid_hk <-
   count() %>% 
   ungroup() %>% 
   rename(n_participants = n) %>% 
-  mutate(dataset = 'healthkit') %>% 
-  collect()
+  mutate(dataset = 'healthkit')
 ```
 
 
@@ -400,7 +427,6 @@ mismatch_pids <-
       sort() %>% 
       setdiff(hk_devices %>% 
                 select(ParticipantIdentifier, Device_Model, Device_HardwareVersion, Source_Identifier) %>% 
-                # collect() %>% 
                 filter(!(is.na(Device_Model) & is.na(Device_HardwareVersion) & is.na(Source_Identifier))) %>% 
                 pull(ParticipantIdentifier) %>% 
                 unique() %>% 
