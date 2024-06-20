@@ -22,7 +22,7 @@ tictoc::tic("INFO: Fitbit DailyData Metrics markdown knit to project wiki")
 knit2synapse::knitfile2synapse(
   file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
   owner = "syn51105296",
-  parentWikiId = '627748',
+  parentWikiId = '628496',
   wikiName = FOLDER_NAME,
   overwrite = TRUE)
 
