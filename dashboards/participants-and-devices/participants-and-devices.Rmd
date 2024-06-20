@@ -984,6 +984,8 @@ curr_state <-
   left_join(y = total_records_df, by = join_by(dataset)) %>% 
   knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
+curr_state
+
 write.csv(curr_state, 
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'),
           row.names = T)
