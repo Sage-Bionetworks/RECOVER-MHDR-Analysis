@@ -948,30 +948,43 @@ tmp_pids_googlefit <-
 
 
 ```{r current state of data table combine and output, echo=FALSE}
-row_vals <- c("Participants", "Watch/Tracker", "Total Records")
-col_vals <- c("Fitbit", "HealthKit", "GoogleFit", "Symptoms", "Total")
+participants_df <- 
+  pq_pids_by_dataset %>% 
+  filter(dataset!="enrolledparticipants") %>% 
+  rename(participants = n_participants)
 
-curr_state <- matrix(data = NA, nrow = length(row_vals), ncol = length(col_vals))
-rownames(curr_state) <- row_vals
-colnames(curr_state) <- col_vals
+watch_tracker_df <- 
+  data.frame(
+    dataset = c("fitbit", "healthkit", "googlefit"),
+    watch_tracker_count = c(
+      non_mobile_track_pids %>% select(ParticipantIdentifier) %>% n_distinct(),
+      tmp_filtered_pids_hk %>% select(ParticipantIdentifier) %>% n_distinct(),
+      tmp_pids_googlefit %>% select(ParticipantIdentifier) %>% n_distinct()
+    )
+  )
 
-curr_state[1,] <- pq_pids_by_dataset$n_participants
+total_records_df <- 
+  data.frame(
+    dataset = c("fitbit", "healthkit", "googlefit", "symptomlog"),
+    records = c(
+      pq_n_records$n_records[which(grepl("dataset_fitbit*", pq_n_records$dataset))] %>% sum(),
+      pq_n_records$n_records[which(grepl("dataset_healthkitv2*", pq_n_records$dataset))] %>% sum(),
+      pq_n_records$n_records[which(grepl("dataset_google*", pq_n_records$dataset))] %>% sum(),
+      pq_n_records$n_records[which(grepl("dataset_symptomlog*", pq_n_records$dataset))] %>% sum()
+    )
+  )
 
-curr_state[2, 1] <- non_mobile_track_pids %>% select(ParticipantIdentifier) %>% n_distinct()
-curr_state[2, 2] <- tmp_filtered_pids_hk %>% select(ParticipantIdentifier) %>% n_distinct()
-curr_state[2, 3] <- tmp_pids_googlefit %>% select(ParticipantIdentifier) %>% n_distinct()
-curr_state[2, 4] <- NA
-curr_state[2, 5] <- curr_state[2, 1] + curr_state[2, 2] + curr_state[2, 3]
+participants_table <- participants_df %>% knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+watch_tracker_table <- watch_tracker_df %>% knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+total_records_table <- total_records_df %>% knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
-curr_state[3, 1] <- pq_n_records$n_records[which(grepl("dataset_fitbit*", pq_n_records$dataset))] %>% sum()
-curr_state[3, 2] <- pq_n_records$n_records[which(grepl("dataset_healthkitv2*", pq_n_records$dataset))] %>% sum()
-curr_state[3, 3] <- pq_n_records$n_records[which(grepl("dataset_google*", pq_n_records$dataset))] %>% sum()
-curr_state[3, 4] <- pq_n_records$n_records[which(grepl("dataset_symptomlog*", pq_n_records$dataset))] %>% sum()
-curr_state[3, 5] <- curr_state[3, 1] + curr_state[3, 2] + curr_state[3, 3] + curr_state[3, 4]
+curr_state <- 
+  participants_df %>% 
+  left_join(y = watch_tracker_df, by = join_by(dataset)) %>% 
+  left_join(y = total_records_df, by = join_by(dataset)) %>% 
+  knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
-curr_state <- curr_state %>% as.data.frame()
-
-curr_state %>% knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+curr_state
 
 write.csv(curr_state, 
           glue::glue('./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/current_state_of_data.csv'),
