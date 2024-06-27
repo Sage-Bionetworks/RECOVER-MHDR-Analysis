@@ -3,7 +3,8 @@ import pyarrow.parquet as pq
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
-import awswrangler as wr
+import matplotlib.dates as mdates
+
 
 def hist_dist(hist_val, x_label="", y_label="", bins=1, x_range=None, y_range=None, title="", st=0):
     plt.xlabel(x_label, fontsize=10)
@@ -254,7 +255,151 @@ def adjust_enroll_time_form(df_enrolled):
 
 def show_stat_df_sleep(df_sleep, col_names):
     for col in col_names:
-       print(df_sleep[col].astype(float).describe()) 
+       print(df_sleep[col].astype(float).describe())
 
+def cal_date_hour_mx(count_df):
+    # Extract date and hour from interval_start
+    count_df['date'] = count_df['interval_start'].dt.date
+    count_df['hour'] = count_df['interval_start'].dt.hour
+
+    # Create a pivot table
+    # TODO: Do not take the average
+    pivot_table = count_df.pivot_table(values='total', index='date', columns='hour', fill_value=0)
+    return pivot_table
+
+def cal_subject_missflg(intra_hr):
+    intervals = pd.date_range(intra_hr['DateTime'].min(), intra_hr['DateTime'].max(), freq='15min')
+    count_df = pd.DataFrame({
+        'interval_start': intervals,
+        'missflg': True
+    })
+
+    count_df = count_df.sort_values(by='interval_start').reset_index(drop=True)
+    intra_hr = intra_hr.sort_values(by='DateTime').reset_index(drop=True)
+
+    for j, i in tqdm(enumerate(range(len(count_df)))):
+        print(count_df.iloc[i])
+        print("test")
+
+        start_time = count_df.loc[j, 'interval_start']
+        if i < len(count_df) - 1:
+            end_time = count_df.loc[j + 1, 'interval_start']
+            if intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)].shape[0] > 0:
+                count_df.iloc[j, 'missflg'] = False
+        else:
+            if intra_hr[intra_hr['DateTime'] >= start_time].shape[0] > 0:
+                count_df.iloc[i, 'missflg'] = False
+
+    # Assign the counts to the 'total' column in df
+    return count_df
+
+def cal_subject_counts(intra_hr):
+    intervals = pd.date_range(intra_hr['DateTime'].min(), intra_hr['DateTime'].max(), freq='30min')
+    count_df = pd.DataFrame({
+        'interval_start': intervals,
+        'total': -1
+    })
+
+    count_df = count_df.sort_values(by='interval_start').reset_index(drop=True)
+    intra_hr = intra_hr.sort_values(by='DateTime').reset_index(drop=True)
+
+    counts = []
+
+    for i in tqdm(range(len(count_df))):
+        start_time = count_df.loc[i, 'interval_start']
+        if i < len(count_df) - 1:
+            end_time = count_df.loc[i + 1, 'interval_start']
+            count = intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)].shape[0]
+        else:
+            count = intra_hr[intra_hr['DateTime'] >= start_time].shape[0]
+        counts.append(count)
+
+    # Assign the counts to the 'total' column in df
+    count_df['total'] = counts
+    return count_df
+
+def plot_date_hour_mx(pivot_table):
+
+    # Plotting
+    plt.figure(figsize=(12, 8))
+    plt.pcolormesh(pivot_table.columns, pivot_table.index, pivot_table.values, cmap='Blues', shading='auto')
+
+    # Set the labels
+    plt.xlabel('Hour of Day')
+    plt.ylabel('Date')
+    plt.title('Pseudocolor Plot of Total by Date and Hour')
+
+    # Format the date on y-axis
+
+    plt.colorbar(label='Number of entries within a hour')
+
+    plt.xticks(np.arange(0, 24, 1))  # Assuming hours are from 0 to 23
+    plt.yticks(rotation=45)
+    plt.grid(False)
+    plt.tight_layout()
+
+    plt.show()   
+        
+
+def flag_missing_data(df, column_to_query, study_period=(), interval_size=15):
+    """
+    Flags missing data for a specific column within a given study period.
+    Parameters:
+    - df: DataFrame with 'person_id', 'date', and other columns.** date or datetime should be flexible
+    - column_to_query: either string or list, the name of the column(s) to check for missing data.
+    - study_period: Tuple or list, containing the start and end dates of the study period ('YYYY-MM-DD', 'YYYY-MM-DD').
+    - interval_size: Integer, how big of a gap there is between data points in output table in minutes (aggregated
+    raw data points into 'bins' of size interval_size)
+
+    Returns:
+    - DataFrame with an additional column indicating missing data for the queried column (called 'Missing_Flag')
+    """
+
+    # Check to make sure column_to_query is a column in df
+    if column_to_query not in df.columns:
+        raise Exception("Column to query is not a column in the provided DataFrame")
+
+    # Preprocessing of dataset
+    df['datetime'] = pd.to_datetime(df['datetime']) # Convert to datetime objects
+
+    # Determine study_period
+    if len(study_period) == 2:
+        start_date = pd.to_datetime(study_period[0])
+        end_date = pd.to_datetime(study_period[1])
+
+    # If no study period provided, use entire dataset
+    else:
+        start_date = df['datetime'].min()
+        end_date = df['datetime'].max()
+
+    start_date = round_to_nearest_interval(start_date, interval_size)
+    end_date = round_to_nearest_interval(end_date, interval_size)
+
+    # Filter to only have study period
+    df = df[(df['datetime'] >= start_date) & (df['datetime'] <= end_date)]
+
+    # Group by person_id, resample based on interval_size provided
+    df.set_index('datetime', inplace=True)
+
+    # Resample data based on interval_size, take mean heart_rate of all entries in that time interval
+    resampled = df.groupby('person_id', as_index=False).resample(f'{interval_size}min').mean().reset_index()
+    #resampled['datetime'] = resampled['datetime'].apply(lambda dt: round_to_nearest_interval(dt, interval_size))
+
+    # Make sure there is a row in the DataFrame for every person for every time point
+    all_people = df['person_id'].unique()
+    all_intervals = pd.date_range(start=start_date, end=end_date, freq=f"{interval_size}min")
+    all_df = pd.DataFrame([(person, interval) for person in all_people for interval in all_intervals], columns=['person_id', 'datetime'])
+
+    merged_df = pd.merge(all_df, resampled, on=['person_id', 'datetime'], how='left')
+
+    # Create Missing_Flag column
+    merged_df['Missing_Flag'] = merged_df[column_to_query].isna()
     
-    
+    return merged_df[['person_id', 'datetime', column_to_query, 'Missing_Flag']]
+
+def round_to_nearest_interval(dt, interval_size):
+    """
+    Rounds a datetime object to the nearest interval (always rounds down).
+    """
+    rounded_minute = (dt.minute // interval_size) * interval_size
+    return dt.replace(minute=rounded_minute, second=0, microsecond=0)
