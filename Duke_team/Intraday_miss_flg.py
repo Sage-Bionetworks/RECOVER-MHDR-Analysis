@@ -90,7 +90,8 @@ step = 4
 weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 # %%
-unique_id_S2C5 = unique_id_S2C5_full[0:1]
+unique_id_S2C5 = unique_id_S2C5_full[0:100]
+unique_id_S2C5 = ['RA11001-00173']
 for i, subject_id in enumerate(unique_id_S2C5):
     if i%10 == 0:
         print("test" + str(subject_id) + " " + str(i))
@@ -101,10 +102,10 @@ for i, subject_id in enumerate(unique_id_S2C5):
 
     intra_comb = dataset.to_table().to_pandas()
     intra_hr = intra_comb[intra_comb['Type']=='activities-heart']
+    del intra_comb
     intra_hr['DateTime'] = pd.to_datetime(intra_hr.loc[:, 'DateTime'])
     # intra_hr = intra_hr[(intra_hr['DateTime'] >= pd.Timestamp('2023-08-01')) & (intra_hr['DateTime'] < pd.Timestamp('2023-09-01'))]
-    heart_rate_data = intra_hr.loc[:,['ParticipantIdentifier', 'DateTime', 'Value']]
-    heart_rate_data = heart_rate_data.rename(columns={"ParticipantIdentifier": "person_id", "DateTime": "datetime", "Value":"heart_rate"})
+    intra_hr = intra_hr.loc[:,['ParticipantIdentifier', 'DateTime', 'Value']]
     if len(intra_hr)<2:
         print(intra_hr['DateTime'].min(), intra_hr['DateTime'].max())
         print(str(subject_id))
@@ -123,10 +124,10 @@ for i, subject_id in enumerate(unique_id_S2C5):
     #     start_time = count_df.iloc[i, 0]
     #     if i < len(count_df) - 1:
     #         end_time = count_df.iloc[i + 1, 0]
-    #         if intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)].shape[0] > 15:
+    #         if intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)].shape[0] > 1:
     #             count_df.iloc[i, 1] = False
     #     else:
-    #         if intra_hr[intra_hr['DateTime'] >= start_time].shape[0] > 15:
+    #         if intra_hr[intra_hr['DateTime'] >= start_time].shape[0] > 1:
     #             count_df.iloc[i, 1] = False
     # print(time.time()-st)
 
@@ -134,13 +135,9 @@ for i, subject_id in enumerate(unique_id_S2C5):
     start_times = count_df.iloc[:, 0]
 
     # Calculate end times (shifted start times)
-    end_times = start_times.shift(-1)
-
-    # Create a condition for the last interval where end_time will be NaT
-    is_last_interval = end_times.isna()
-
+    end_times = start_times.shift(-1, fill_value=intra_hr['DateTime'].max())
     # For intervals that are not the last, check if the number of rows in intra_hr between start and end times is greater than 15
-    condition_non_last = (intra_hr['DateTime'].values[:, None] >= start_times.values) & (intra_hr['DateTime'].values[:, None] < end_times.fillna(intra_hr['DateTime'].max()).values)
+    condition_non_last = (intra_hr['DateTime'][:5000].values[:, None] >= start_times.values) & (intra_hr['DateTime'][:5000].values[:, None] < end_times.values)
     conditions = np.sum(condition_non_last, axis=0) > 15
 
     # Update the cpunt_df_2 based on the conditions
@@ -166,10 +163,15 @@ for i, subject_id in enumerate(unique_id_S2C5):
     np.save('./missratio_h/' + subject_id + '.npy', array)
 
 
-# Get the weekdays in order
-time_series = miss_ratio_h.iloc[:,0]
-reduced_time_series = time_series[::step]
 
+
+
+
+# %%
+step = 4
+
+time_series = pivot_table.index.values
+reduced_time_series = time_series[::step]
 
 # Plot the pivot table using pcolormesh
 plt.figure(figsize=(10, 6))
@@ -184,23 +186,5 @@ plt.title('Missingness by 15-Minute Chunks and Weekday ' + subject_id)
 plt.xlabel('15-Minute Chunks')
 plt.ylabel('Weekday')
 plt.show()
-
-# Your array
-
-# Duplicate the array to create a 2D array
-array_2d = np.tile(array, (2, 1))
-reduced_time_series = time_series[::step]
-
-# Create the plot
-plt.figure(figsize=(10, 2))
-plt.pcolormesh(array_2d, shading='auto', cmap='Blues_r')
-plt.colorbar(label='Missingness')
-plt.title('Missingness during a day' + subject_id)
-plt.xlabel('Time Intervals')
-plt.xticks(ticks=np.arange(0, len(time_series), step), labels=reduced_time_series, rotation=90)
-plt.yticks([])
-plt.show()
-
-
 
 # %%
