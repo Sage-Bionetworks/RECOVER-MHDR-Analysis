@@ -86,10 +86,14 @@ participant_list = ['RA11003-00024']
 unique_subject_id = list(set(file_name.split('/')[6] for file_name in dataset_cohort.files))
 ID_S2C5 = np.load('ID.npy', allow_pickle=True)
 unique_id_S2C5_full = np.intersect1d(ID_S2C5, unique_subject_id)
+step = 4
+weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 # %%
-unique_id_S2C5 = ['RA11003-00049']
-for subject_id in unique_id_S2C5:
+unique_id_S2C5 = unique_id_S2C5_full[0:1]
+for i, subject_id in enumerate(unique_id_S2C5):
+    if i%10 == 0:
+        print("test" + str(subject_id) + " " + str(i))
     print("test" + str(subject_id))
     # Find all file names containing the subject ID
     matching_files = [file for file in dataset_cohort.files if subject_id in file]
@@ -98,8 +102,7 @@ for subject_id in unique_id_S2C5:
     intra_comb = dataset.to_table().to_pandas()
     intra_hr = intra_comb[intra_comb['Type']=='activities-heart']
     intra_hr['DateTime'] = pd.to_datetime(intra_hr.loc[:, 'DateTime'])
-    print(intra_hr['DateTime'])
-    intra_hr = intra_hr[(intra_hr['DateTime'] >= pd.Timestamp('2023-08-01')) & (intra_hr['DateTime'] < pd.Timestamp('2023-09-01'))]
+    # intra_hr = intra_hr[(intra_hr['DateTime'] >= pd.Timestamp('2023-08-01')) & (intra_hr['DateTime'] < pd.Timestamp('2023-09-01'))]
     heart_rate_data = intra_hr.loc[:,['ParticipantIdentifier', 'DateTime', 'Value']]
     heart_rate_data = heart_rate_data.rename(columns={"ParticipantIdentifier": "person_id", "DateTime": "datetime", "Value":"heart_rate"})
     if len(intra_hr)<2:
@@ -127,10 +130,7 @@ for subject_id in unique_id_S2C5:
     #             count_df.iloc[i, 1] = False
     # print(time.time()-st)
 
-    
-    
     st = time.time()
-    count_df_2 = count_df.copy()
     start_times = count_df.iloc[:, 0]
 
     # Calculate end times (shifted start times)
@@ -143,29 +143,30 @@ for subject_id in unique_id_S2C5:
     condition_non_last = (intra_hr['DateTime'].values[:, None] >= start_times.values) & (intra_hr['DateTime'].values[:, None] < end_times.fillna(intra_hr['DateTime'].max()).values)
     conditions = np.sum(condition_non_last, axis=0) > 15
 
-
-
     # Update the cpunt_df_2 based on the conditions
-    count_df_2.iloc[:, 1] = ~conditions
+    count_df.iloc[:, 1] = ~conditions
     print(time.time()-st)
 
-# %%
-step = 4  # every hour (15 min interval * 4)
+    # Group by 15-minute intervals
+    count_df['15_min_chunk'] = count_df['interval_start'].dt.time
+    count_df['weekday'] = count_df['interval_start'].dt.day_name()
+    # Calculate the ratio of True values for each 15-minute chunk
+    miss_ratio_h = count_df.groupby('15_min_chunk')['missflg'].mean().reset_index()
+    miss_ratio_week = count_df.groupby(['weekday', '15_min_chunk'])['missflg'].mean().reset_index()
 
-# Group by 15-minute intervals
-count_df['15_min_chunk'] = count_df['interval_start'].dt.time
-count_df['weekday'] = count_df['interval_start'].dt.day_name()
-# Calculate the ratio of True values for each 15-minute chunk
-miss_ratio_h = count_df.groupby('15_min_chunk')['missflg'].mean().reset_index()
-miss_ratio_week = count_df.groupby(['weekday', '15_min_chunk'])['missflg'].mean().reset_index()
+    # To have a meaningful visualization with weekdays and 15-minute chunks, create a pivot table
+    pivot_table = miss_ratio_week.pivot(index='15_min_chunk', columns='weekday', values='missflg')
+    pivot_table = pivot_table[weekdays_order]
+    array = miss_ratio_h.iloc[:,1].values
 
+    # Save the pivot table to a CSV file
+    pivot_table.to_csv('./missratio_week/' + subject_id + '.csv')
 
-# To have a meaningful visualization with weekdays and 15-minute chunks, create a pivot table
-pivot_table = miss_ratio_week.pivot(index='15_min_chunk', columns='weekday', values='missflg')
+    # Save the array to a file
+    np.save('./missratio_h/' + subject_id + '.npy', array)
+
 
 # Get the weekdays in order
-weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
-pivot_table = pivot_table[weekdays_order]
 time_series = miss_ratio_h.iloc[:,0]
 reduced_time_series = time_series[::step]
 
@@ -185,8 +186,6 @@ plt.ylabel('Weekday')
 plt.show()
 
 # Your array
-array = miss_ratio_h.iloc[:,1].values
-
 
 # Duplicate the array to create a 2D array
 array_2d = np.tile(array, (2, 1))
@@ -201,5 +200,7 @@ plt.xlabel('Time Intervals')
 plt.xticks(ticks=np.arange(0, len(time_series), step), labels=reduced_time_series, rotation=90)
 plt.yticks([])
 plt.show()
+
+
 
 # %%
