@@ -16,6 +16,7 @@ import tqdm
 import numpy as np
 from data_utils import *
 import matplotlib.pyplot as plt
+import time
 
 ########
 # Set up Access and download dataset
@@ -87,7 +88,7 @@ ID_S2C5 = np.load('ID.npy', allow_pickle=True)
 unique_id_S2C5_full = np.intersect1d(ID_S2C5, unique_subject_id)
 
 # %%
-unique_id_S2C5 = ['RA11002-00182']
+unique_id_S2C5 = ['RA11003-00049']
 for subject_id in unique_id_S2C5:
     print("test" + str(subject_id))
     # Find all file names containing the subject ID
@@ -96,17 +97,17 @@ for subject_id in unique_id_S2C5:
 
     intra_comb = dataset.to_table().to_pandas()
     intra_hr = intra_comb[intra_comb['Type']=='activities-heart']
-    intra_hr.loc[:,'DateTime'] = pd.to_datetime(intra_hr.loc[:, 'DateTime'])
+    intra_hr['DateTime'] = pd.to_datetime(intra_hr.loc[:, 'DateTime'])
+    print(intra_hr['DateTime'])
     intra_hr = intra_hr[(intra_hr['DateTime'] >= pd.Timestamp('2023-08-01')) & (intra_hr['DateTime'] < pd.Timestamp('2023-09-01'))]
     heart_rate_data = intra_hr.loc[:,['ParticipantIdentifier', 'DateTime', 'Value']]
     heart_rate_data = heart_rate_data.rename(columns={"ParticipantIdentifier": "person_id", "DateTime": "datetime", "Value":"heart_rate"})
-    flag_missing_data(heart_rate_data, 'heart_rate')
     if len(intra_hr)<2:
         print(intra_hr['DateTime'].min(), intra_hr['DateTime'].max())
         print(str(subject_id))
         continue
 
-    intervals = pd.date_range(intra_hr['DateTime'].min(), intra_hr['DateTime'].max(), freq='15min')
+    intervals = pd.date_range(intra_hr['DateTime'].min().normalize(), intra_hr['DateTime'].max().normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1), freq='15min')
     count_df = pd.DataFrame({
         'interval_start': intervals,
         'missflg': True
@@ -114,192 +115,91 @@ for subject_id in unique_id_S2C5:
 
     count_df = count_df.sort_values(by='interval_start').reset_index(drop=True)
     intra_hr = intra_hr.sort_values(by='DateTime').reset_index(drop=True)
+    # st = time.time()
+    # for i in tqdm(range(len(count_df))):        
+    #     start_time = count_df.iloc[i, 0]
+    #     if i < len(count_df) - 1:
+    #         end_time = count_df.iloc[i + 1, 0]
+    #         if intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)].shape[0] > 15:
+    #             count_df.iloc[i, 1] = False
+    #     else:
+    #         if intra_hr[intra_hr['DateTime'] >= start_time].shape[0] > 15:
+    #             count_df.iloc[i, 1] = False
+    # print(time.time()-st)
 
-    for i in tqdm(range(len(count_df))):        
-        start_time = count_df.iloc[i, 0]
-        if i < len(count_df) - 1:
-            end_time = count_df.iloc[i + 1, 0]
-            if intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)].shape[0] > 15:
-                count_df.iloc[i, 1] = False
-        else:
-            if intra_hr[intra_hr['DateTime'] >= start_time].shape[0] > 15:
-                count_df.iloc[i, 1] = False
-        
+    
+    
+    st = time.time()
+    count_df_2 = count_df.copy()
+    start_times = count_df.iloc[:, 0]
 
+    # Calculate end times (shifted start times)
+    end_times = start_times.shift(-1)
 
+    # Create a condition for the last interval where end_time will be NaT
+    is_last_interval = end_times.isna()
 
-# %%
-
-# Set interval_start as the index
-count_df.set_index('interval_start', inplace=True)
-
-# Resample in 15-minute intervals and calculate the ratio of True values
-resampled = count_df.resample('15T').mean()
-
-# Group by date and calculate the average ratio for each date
-average_ratios = resampled.groupby(resampled.index.date).mean()
-
-# Create a new DataFrame with the date and the average ratio
-average_ratios_df = pd.DataFrame({
-    'date': average_ratios.index,
-    'average_true_ratio': average_ratios['missflg'].values
-})
-
-# Display the result
-print(average_ratios_df)# plot_date_hour_mx(pivot_table)
-average_ratios_df['Missing'] = 1 - average_ratios_df['average_true_ratio'] 
-# %%
-import os
-import pandas as pd
-
-folder_path = '/home/ec2-user/RECOVER-MHDR-Analysis/Duke_team/tables'
-df_sum = pd.read_csv("/home/ec2-user/RECOVER-MHDR-Analysis/Duke_team/tables/RA11003-00024.csv")
-for i, filename in enumerate(os.listdir(folder_path)):
-    file_path = os.path.join(folder_path, filename)
-    df = pd.read_csv(file_path)
-    all_columns = [str(i) for i in range(24)]
-    df2 = pd.DataFrame(df)
-    df2 = df2.set_index('date').reindex(columns=all_columns, fill_value=0.0).reset_index()
-
-    # Generate all dates from 2023-08-01 to 2023-08-31
-    all_dates = pd.date_range(start="2023-08-01", end="2023-08-31").strftime('%Y-%m-%d').tolist()
-
-    # Set index to 'date' and reindex with all dates, filling missing values with 0.0
-    df2 = df2.set_index('date').reindex(all_dates, fill_value=0.0).reset_index()
-
-    # Rename the index column back to 'date'
-    df2.rename(columns={'index': 'date'}, inplace=True)
-    df_sum = df_sum + df2
-    print(i)
+    # For intervals that are not the last, check if the number of rows in intra_hr between start and end times is greater than 15
+    condition_non_last = (intra_hr['DateTime'].values[:, None] >= start_times.values) & (intra_hr['DateTime'].values[:, None] < end_times.fillna(intra_hr['DateTime'].max()).values)
+    conditions = np.sum(condition_non_last, axis=0) > 15
 
 
+
+    # Update the cpunt_df_2 based on the conditions
+    count_df_2.iloc[:, 1] = ~conditions
+    print(time.time()-st)
 
 # %%
-import pandas as pd
-import numpy as np
+step = 4  # every hour (15 min interval * 4)
 
-# Sample data for the second pivot table
-data2 = {
-    'date': ['2023-08-01', '2023-08-02'],
-    '0': [0.0, 247.5],
-    '1': [0.0, 110.0],
-    '2': [0.0, 0.0],
-    '3': [0.0, 0.0],
-    '4': [0.0, 1.5],
-    '5': [0.0, 76.5],
-    '6': [0.0, 20.0],
-    '7': [0.0, 118.0],
-    '8': [0.0, 150.0],
-    '16': [231.5, 0.0],
-    '17': [701.5, 0.0],
-    '18': [686.0, 0.0],
-    '19': [10.0, 0.0],
-    '20': [237.5, 0.0],
-    '21': [218.0, 0.0],
-    '22': [225.0, 0.0],
-    '23': [255.5, 0.0],
-}
-
-# Create DataFrame from sample data
-df2 = pd.DataFrame(data2)
-
-# Generate all dates from 2023-08-01 to 2023-08-31
-all_dates = pd.date_range(start="2023-08-01", end="2023-08-31").strftime('%Y-%m-%d').tolist()
-
-# Set index to 'date' and reindex with all dates, filling missing values with 0.0
-df2 = df2.set_index('date').reindex(all_dates, fill_value=0.0).reset_index()
-
-# Rename the index column back to 'date'
-df2.rename(columns={'index': 'date'}, inplace=True)
+# Group by 15-minute intervals
+count_df['15_min_chunk'] = count_df['interval_start'].dt.time
+count_df['weekday'] = count_df['interval_start'].dt.day_name()
+# Calculate the ratio of True values for each 15-minute chunk
+miss_ratio_h = count_df.groupby('15_min_chunk')['missflg'].mean().reset_index()
+miss_ratio_week = count_df.groupby(['weekday', '15_min_chunk'])['missflg'].mean().reset_index()
 
 
-# Display the aligned DataFrame
-print(df2)
-# %%
-df2 = pd.read_csv("./tables/RA11101-00301.csv",index_col=[0])
-plot_date_hour_mx(df2)
-# %%
-import pandas as pd
+# To have a meaningful visualization with weekdays and 15-minute chunks, create a pivot table
+pivot_table = miss_ratio_week.pivot(index='15_min_chunk', columns='weekday', values='missflg')
 
-# Sample DataFrame
-data = {
-    'interval_start': [
-        '2023-08-27 00:00:10', '2023-08-27 00:15:10', '2023-08-27 00:30:10', 
-        '2023-08-27 00:45:10', '2023-08-27 01:00:10', '2023-08-31 22:45:10', 
-        '2023-08-31 23:00:10', '2023-08-31 23:15:10', '2023-08-31 23:30:10', 
-        '2023-08-31 23:45:10'
-    ],
-    'missflg': [False, False, False, False, False, False, False, False, False, False]
-}
-
-# Convert to DataFrame
-df = pd.DataFrame(data)
-
-# Ensure interval_start is a datetime object
-df['interval_start'] = pd.to_datetime(df['interval_start'])
-
-# Set interval_start as the index
-df.set_index('interval_start', inplace=True)
-
-# Group by date and resample in 15-minute intervals
-grouped = df.groupby(df.index.date).resample('15T').missflg.value_counts(normalize=True).unstack(fill_value=0)
-
-# Calculate the average ratio of True values for each date
-average_ratios = grouped[True].groupby(level=0).mean()
-
-# Create a new DataFrame with the date and the average ratio
-average_ratios_df = pd.DataFrame({
-    'date': average_ratios.index,
-    'average_true_ratio': average_ratios.values
-})
-
-# Display the result
-print(average_ratios_df)
+# Get the weekdays in order
+weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+pivot_table = pivot_table[weekdays_order]
+time_series = miss_ratio_h.iloc[:,0]
+reduced_time_series = time_series[::step]
 
 
+# Plot the pivot table using pcolormesh
+plt.figure(figsize=(10, 6))
+plt.pcolormesh(pivot_table.T, shading='auto', cmap='Blues_r')
+plt.colorbar(label='Miss Ratio')
 
-# %%
-import pandas as pd
+# Set the ticks for x and y axis
+plt.xticks(ticks=np.arange(0, len(pivot_table.index), step), labels=reduced_time_series, rotation=90)
+plt.yticks(ticks=np.arange(0, len(pivot_table.columns)), labels=pivot_table.columns)
 
-# Sample DataFrame
-data = {
-    'interval_start': [
-        '2023-08-27 00:00:10', '2023-08-27 00:15:10', '2023-08-27 00:30:10', 
-        '2023-08-27 00:45:10', '2023-08-27 01:00:10', '2023-08-31 22:45:10', 
-        '2023-08-31 23:00:10', '2023-08-31 23:15:10', '2023-08-31 23:30:10', 
-        '2023-08-31 23:45:10'
-    ],
-    'missflg': [False, False, False, False, False, False, False, False, False, False]
-}
+plt.title('Missingness by 15-Minute Chunks and Weekday ' + subject_id)
+plt.xlabel('15-Minute Chunks')
+plt.ylabel('Weekday')
+plt.show()
 
-# Convert to DataFrame
-df = pd.DataFrame(data)
+# Your array
+array = miss_ratio_h.iloc[:,1].values
 
-# Ensure interval_start is a datetime object
-df['interval_start'] = pd.to_datetime(df['interval_start'])
 
-# Set interval_start as the index
-df.set_index('interval_start', inplace=True)
+# Duplicate the array to create a 2D array
+array_2d = np.tile(array, (2, 1))
+reduced_time_series = time_series[::step]
 
-# Resample in 15-minute intervals and calculate the ratio of True values
-resampled = df.resample('15T').missflg.mean()
-
-# Convert the resampled series to a DataFrame
-resampled = resampled.reset_index()
-
-# Rename columns for clarity
-resampled.columns = ['interval_start', 'true_ratio']
-
-# Add a date column
-resampled['date'] = resampled['interval_start'].dt.date
-
-# Calculate the average ratio for each date
-average_ratio_per_date = resampled.groupby('date')['true_ratio'].mean().reset_index()
-
-# Rename columns for clarity
-average_ratio_per_date.columns = ['date', 'average_true_ratio']
-
-# Display the result
-print(average_ratio_per_date)
+# Create the plot
+plt.figure(figsize=(10, 2))
+plt.pcolormesh(array_2d, shading='auto', cmap='Blues_r')
+plt.colorbar(label='Missingness')
+plt.title('Missingness during a day' + subject_id)
+plt.xlabel('Time Intervals')
+plt.xticks(ticks=np.arange(0, len(time_series), step), labels=reduced_time_series, rotation=90)
+plt.yticks([])
+plt.show()
 
 # %%
