@@ -3,24 +3,66 @@ import pyarrow.parquet as pq
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import awswrangler as wr
 
-def hist_dist(hist_val, x_label, y_label, bins, st=0):
-    plt.figure(figsize=(12, 6))
-    plt.xlabel(x_label)
-    plt.ylabel(y_label)
-    plt.hist(hist_val, range=(hist_val.min()+st, hist_val.max()), bins = bins)
-    plt.show()
+def hist_dist(hist_val, x_label="", y_label="", bins=1, x_range=None, y_range=None, title="", st=0):
+    plt.xlabel(x_label, fontsize=10)
+    plt.ylabel(y_label, fontsize=10)
+    n, bins, p = plt.hist(hist_val, range=(hist_val.min()+st, hist_val.max()), bins = int(hist_val.max()-st-hist_val.min()))
 
-def get_dataset_df(dataset_paths, i, fs):
+    plt.xticks(fontsize=10)  # Increase font size for x ticks
+    plt.yticks(fontsize=10)  # Increase font size for y ticks
+    plt.grid(True, linestyle='--', alpha=0.5)  # Add grid lines
+    max_val = max(hist_val.dropna())
+    plt.text(max_val, 0, f'Max: {max_val}', verticalalignment='bottom', horizontalalignment='right', fontsize=10)  # Add text annotation for maximum value
+    plt.subplots_adjust(hspace=0.6)
+
+    plt.title(title, fontsize=10)  # Add title with increased font size
+    if x_range:
+        plt.xlim(x_range)
+    if y_range:
+        plt.ylim(y_range)
+
+    peak_bin_index = np.argmax(n)
+    peak_bin_value = bins[peak_bin_index]
+    
+    return peak_bin_value, hist_val.mean()
+
+def get_dataset_df(dataset_paths, i, fs, piece_num=0):
     dataset = pq.ParquetDataset(dataset_paths[i], filesystem=fs)
-    print("get_data:"+str(dataset_paths[i]))
-    df = dataset.read().to_pandas()
+    # print("get_data:"+str(dataset_paths[i]))
+    # parquet_file = pq.ParquetFile("s3://" + dataset_paths[i])
+
+    # for batch in parquet_file.iter_batches():
+    #     print("RecordBatch")
+    #     batch_df = batch.to_pandas()
+    #     print("batch_df:", batch_df)
+    
+    if piece_num == 0:
+        df = dataset.read().to_pandas()
+    else:
+        mm = dataset.read([0])
+        # tables = []
+        # for i, piece in enumerate(dataset.pieces[:piece_num]):
+        #     parquet_file = pq.ParquetFile(piece.path, filesystem=fs)
+
+        #     table = piece.to_table()
+        #     tables.append(table)
+    
+        # # Combine the tables into a single DataFrame
+        # combined_table = pq.concat_tables(tables)
+        # df = combined_table.to_pandas()
     print(df.columns)
     return df
 
 def update_df_object_numeric(df, column_name_list):
     for column_name in column_name_list:
         df[column_name] = df[column_name].astype('float')
+    return df
+
+def update_min_to_hour(df, column_name_list):
+    for column_name in column_name_list:
+        df[column_name] = df[column_name].astype('float') / 60
     return df
 
 def update_df_object_str(df, column_name_list):
@@ -31,6 +73,15 @@ def update_df_object_str(df, column_name_list):
 def update_df_object_date(df, column_name_list):
     for column_name in column_name_list:
         df[column_name] = pd.to_datetime(df[column_name])
+    return df
+
+def add_weekday_num(df, col_name):
+    df['weekday'] = pd.to_datetime(df[col_name]).dt.weekday
+    return df
+
+def update_df_object_bool(df, column_name_list):
+    for column_name in column_name_list:
+        df[column_name] = df[column_name].astype('bool')
     return df
 
 def meta_df_df(df, col_name, xlabel, ylabel):
@@ -122,7 +173,7 @@ def filter_fitbit_daily(df, df_enrolled, df_devices):
     fitbit_daily['Date2'] = pd.to_datetime(fitbit_daily['Date'])
     new2_fitbit_daily = pd.DataFrame()
     
-    for ID in ID_daily:
+    for num, ID in enumerate(ID_daily):
         enrollment_date = pd.to_datetime(enrolledparticipants.loc[enrolledparticipants['ParticipantIdentifier'] == ID, 'EnrollmentDate'].values[0])
         tmp_daily = fitbit_daily.loc[(fitbit_daily['ParticipantIdentifier'] == ID) & (fitbit_daily['Date2'] >= enrollment_date)].sort_values('Date2')
         row_index = np.where(tmp_daily['HeartRateIntradayMinuteCount'] != 0)[0]
@@ -131,20 +182,27 @@ def filter_fitbit_daily(df, df_enrolled, df_devices):
             data2 = tmp_daily.iloc[row_index[0]:row_index[-1] + 1]
         else:
             data2 = pd.DataFrame()
-        
+            
+        if num > 10:
+            break
         new2_fitbit_daily = pd.concat([new2_fitbit_daily, data2])
+
+    print(new2_fitbit_daily)
     
     # Label participants who only used Sense 2 and/or Charge 5 during the study
     ID_devices = fitbit_devices['ParticipantIdentifier'].unique()
     num_of_devices = []  # get the number of devices for each participant
     enrolledparticipants['onlyS2C5'] = 0  # dummy variable: 1 = only used Sense 2 and/or Charge 5
     
-    for ID in ID_devices:
+    for num, ID in enumerate(ID_devices):
         device_info = fitbit_devices.loc[fitbit_devices['ParticipantIdentifier'] == ID, 'Device'].unique()
         num_of_devices.append(len(device_info))
         
         if len(device_info) == np.sum(np.isin(device_info, ['Sense 2', 'Charge 5'])):
             enrolledparticipants.loc[enrolledparticipants['ParticipantIdentifier'] == ID, 'onlyS2C5'] = 1
+
+        if num > 10:
+            break
     
     ID_onlyS2C5 = enrolledparticipants.loc[enrolledparticipants['onlyS2C5'] == 1, 'ParticipantIdentifier']
 
