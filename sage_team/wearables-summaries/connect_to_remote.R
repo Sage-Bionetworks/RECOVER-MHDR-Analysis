@@ -35,6 +35,7 @@ archive_folders <-
     )
   )
 
+cat("\n----Archive versions---\n")
 i <- 0
 valid_paths <- character()
 for (archive in archive_folders) {
@@ -57,6 +58,7 @@ dataset_list <-
     )
   )
 
+cat("\n----Datasets---\n")
 i <- 0
 valid_paths <- character()
 for (dataset in dataset_list) {
