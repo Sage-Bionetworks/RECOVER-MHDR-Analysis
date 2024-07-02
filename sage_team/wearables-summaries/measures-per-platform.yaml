@@ -1,10 +1,10 @@
 Fitbit:
-  Heart rate:
+  HeartRate:
     - measure: RestingHeartRate
       dataset: fitbitdailydata
     - measure: AverageHeartRate
       dataset: fitbitactivitylogs
-  Physical activity:
+  PhysicalActivity:
     - measure: MinsFairlyActive
       dataset: fitbitdailydata
     - measure: MinsLightlyActive
@@ -22,10 +22,10 @@ Fitbit:
       dataset: fitbitsleeplogs
 
 Healthkit:
-  Heart rate:
+  HeartRate:
     - measure: Type=="HeartRate"
       dataset: healthkitv2samples
-  Physical activity:
+  PhysicalActivity:
     - measure: Type=="DailySteps"
       dataset: healthkitv2statistics
   Sleep:
