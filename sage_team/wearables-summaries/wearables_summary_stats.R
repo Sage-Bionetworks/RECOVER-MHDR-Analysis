@@ -7,10 +7,33 @@ data_measures <-
 
 data_measures_df <- 
   tibble(
-    platform = rep(names(data_measures), c(sum(lengths(data_measures$Fitbit)), sum(lengths(data_measures$Healthkit)))),
-    category = unlist(lapply(data_measures, function(p) rep(names(p), lengths(p)))),
-    measure = unlist(lapply(data_measures, function(p) lapply(p, function(x) sapply(x, function(y) y$measure)))),
-    dataset = unlist(lapply(data_measures, function(p) lapply(p, function(x) sapply(x, function(y) y$dataset))))
+    platform = 
+      rep(names(data_measures), 
+          c(sum(lengths(data_measures$Fitbit)), 
+            sum(lengths(data_measures$Healthkit)))
+      ),
+    category = 
+      unlist(
+        lapply(data_measures, function(p) {
+          rep(names(p), lengths(p))
+        })
+      ),
+    measure = 
+      unlist(
+        lapply(data_measures, function(p) {
+          lapply(p, function(x) {
+            sapply(x, function(y) y$measure)
+          })
+        })
+      ),
+    dataset = 
+      unlist(
+        lapply(data_measures, function(p) {
+          lapply(p, function(x) {
+            sapply(x, function(y) y$dataset)
+          })
+        })
+      )
   )
 
 # Read a dataset into a data frame
