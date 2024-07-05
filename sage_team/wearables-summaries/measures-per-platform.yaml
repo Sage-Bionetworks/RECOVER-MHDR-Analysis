@@ -32,20 +32,21 @@ Fitbit:
   Sleep:
     - measure: Duration
       dataset: fitbitsleeplogs
+      lowerbound: NA
+      upperbound: NA
     - measure: Efficiency
       dataset: fitbitsleeplogs
+      lowerbound: NA
+      upperbound: NA
 
 Healthkit:
   HeartRate:
-    - measure: Type=="HeartRate"
+    - measure: Type #=="HeartRate"
       dataset: healthkitv2samples
       lowerbound: 25
       upperbound: 300
   PhysicalActivity:
-    - measure: Type=="DailySteps"
+    - measure: Type #=="DailySteps"
       dataset: healthkitv2statistics
       lowerbound: 1
       upperbound: 200000
-  Sleep:
-    - measure: NA
-      dataset: NA
