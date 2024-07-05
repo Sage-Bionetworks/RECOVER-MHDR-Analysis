@@ -33,13 +33,29 @@ data_measures_df <-
             sapply(x, function(y) y$dataset)
           })
         })
+      ),
+    lowerbound = 
+      unlist(
+        lapply(data_measures, function(p) {
+          lapply(p, function(x) {
+            sapply(x, function(y) as.numeric(y$lowerbound))
+          })
+        })
+      ),
+    upperbound = 
+      unlist(
+        lapply(data_measures, function(p) {
+          lapply(p, function(x) {
+            sapply(x, function(y) as.numeric(y$upperbound))
+          })
+        })
       )
   )
 
 # Read a dataset into a data frame
 datasets <- 
   unique(
-    data_measures_df$dataset[data_measures_df$dataset!="NA"]
+    data_measures_df$dataset[!is.na(data_measures_df$dataset)]
   )
 
 dataset_paths <- tibble(dataset = character(), path = character())
@@ -85,6 +101,7 @@ reduced_datasets <-
       select(any_of(c("ParticipantIdentifier", "StartDate", "EndDate", "Date", measures)))
   }, simplify = FALSE)
 
+# Filter datasets
 reduced_datasets$healthkitv2samples <- 
   reduced_datasets$healthkitv2samples %>% 
   filter(Type=="HeartRate")
@@ -92,4 +109,3 @@ reduced_datasets$healthkitv2samples <-
 reduced_datasets$healthkitv2statistics <- 
   reduced_datasets$healthkitv2statistics %>% 
   filter(Type=="DailySteps")
-
