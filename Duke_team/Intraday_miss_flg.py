@@ -90,8 +90,8 @@ step = 4
 weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
 
 # %%
-unique_id_S2C5 = unique_id_S2C5_full[0:100]
-unique_id_S2C5 = ['RA11001-00173']
+MAX_Size = 1000000
+unique_id_S2C5 = unique_id_S2C5_full[100:200]
 for i, subject_id in enumerate(unique_id_S2C5):
     if i%10 == 0:
         print("test" + str(subject_id) + " " + str(i))
@@ -137,7 +137,7 @@ for i, subject_id in enumerate(unique_id_S2C5):
     # Calculate end times (shifted start times)
     end_times = start_times.shift(-1, fill_value=intra_hr['DateTime'].max())
     # For intervals that are not the last, check if the number of rows in intra_hr between start and end times is greater than 15
-    condition_non_last = (intra_hr['DateTime'][:5000].values[:, None] >= start_times.values) & (intra_hr['DateTime'][:5000].values[:, None] < end_times.values)
+    condition_non_last = (intra_hr['DateTime'][:MAX_Size].values[:, None] >= start_times.values) & (intra_hr['DateTime'][:MAX_Size].values[:, None] < end_times.values)
     conditions = np.sum(condition_non_last, axis=0) > 15
 
     # Update the cpunt_df_2 based on the conditions
@@ -153,7 +153,8 @@ for i, subject_id in enumerate(unique_id_S2C5):
 
     # To have a meaningful visualization with weekdays and 15-minute chunks, create a pivot table
     pivot_table = miss_ratio_week.pivot(index='15_min_chunk', columns='weekday', values='missflg')
-    pivot_table = pivot_table[weekdays_order]
+    pivot_table = pivot_table.reindex(columns=weekdays_order, fill_value=pd.NA)
+    pivot_table = pivot_table.dropna(axis=1, how='all')
     array = miss_ratio_h.iloc[:,1].values
 
     # Save the pivot table to a CSV file
@@ -161,10 +162,6 @@ for i, subject_id in enumerate(unique_id_S2C5):
 
     # Save the array to a file
     np.save('./missratio_h/' + subject_id + '.npy', array)
-
-
-
-
 
 
 # %%
@@ -186,5 +183,33 @@ plt.title('Missingness by 15-Minute Chunks and Weekday ' + subject_id)
 plt.xlabel('15-Minute Chunks')
 plt.ylabel('Weekday')
 plt.show()
+
+# %%
+import pandas as pd
+
+# Sample data
+data = {
+    'interval_start': ['2023-08-27 00:00:00', '2023-08-28 00:15:00', '2023-08-29 00:45:00', '2023-08-30 00:45:00'],
+    'missflg': [True, False, True, False]
+}
+
+df = pd.DataFrame(data)
+df['interval_start'] = pd.to_datetime(df['interval_start'])
+df['15_min_chunk'] = df['interval_start'].dt.time
+df['weekday'] = df['interval_start'].dt.day_name()
+
+# Calculate the ratio of True values for each 15-minute chunk and weekday
+miss_ratio = df.groupby(['15_min_chunk', 'weekday'])['missflg'].mean().reset_index()
+
+# Create pivot table
+pivot_table = miss_ratio.pivot(index='15_min_chunk', columns='weekday', values='missflg')
+
+# Weekday order
+weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday']
+
+# Reindex pivot table to include all weekdays in the specified order, filling missing values with NaN
+pivot_table = pivot_table.reindex(columns=weekdays_order)
+
+print(pivot_table)
 
 # %%
