@@ -5,13 +5,13 @@ Fitbit:
     - measure: AverageHeartRate
       dataset: fitbitactivitylogs
   PhysicalActivity:
-    - measure: MinsFairlyActive
+    - measure: MinutesFairlyActive
       dataset: fitbitdailydata
-    - measure: MinsLightlyActive
+    - measure: MinutesLightlyActive
       dataset: fitbitdailydata
-    - measure: MinsSedentary
+    - measure: MinutesSedentary
       dataset: fitbitdailydata
-    - measure: MinsVeryActive
+    - measure: MinutesVeryActive
       dataset: fitbitdailydata
     - measure: Steps
       dataset: fitbitdailydata
