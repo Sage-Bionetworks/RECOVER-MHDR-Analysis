@@ -64,3 +64,23 @@ datasets <-
   dataset_paths %>% 
   split(dataset_paths$dataset) %>% 
   purrr::map(\(df) arrow::open_dataset(s3$path(df$path)))
+
+reduced_datasets <- 
+  names(datasets) %>%
+  sapply(function(dataset) {
+    measures <-
+      data_measures_df$measure[
+        which(data_measures_df$dataset==dataset)
+      ] %>%
+      as.vector() %>% 
+      sapply(function(measure) {
+        strsplit(measure, "==") %>% 
+          unlist() %>% 
+          first()
+      }) %>% 
+      unique()
+    
+    dataset <- 
+      datasets[[dataset]] %>% 
+      select(any_of(c("ParticipantIdentifier", "StartDate", "EndDate", "Date", measures)))
+  }, simplify = FALSE)
