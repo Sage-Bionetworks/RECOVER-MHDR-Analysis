@@ -2,19 +2,33 @@ Fitbit:
   HeartRate:
     - measure: RestingHeartRate
       dataset: fitbitdailydata
+      lowerbound: 25
+      upperbound: 300
     - measure: AverageHeartRate
       dataset: fitbitactivitylogs
+      lowerbound: 25
+      upperbound: 300
   PhysicalActivity:
     - measure: MinutesFairlyActive
       dataset: fitbitdailydata
+      lowerbound: 0
+      upperbound: 1440
     - measure: MinutesLightlyActive
       dataset: fitbitdailydata
+      lowerbound: 0
+      upperbound: 1440
     - measure: MinutesSedentary
       dataset: fitbitdailydata
+      lowerbound: 0
+      upperbound: 1440
     - measure: MinutesVeryActive
       dataset: fitbitdailydata
+      lowerbound: 0
+      upperbound: 1440
     - measure: Steps
       dataset: fitbitdailydata
+      lowerbound: 1
+      upperbound: 200000
   Sleep:
     - measure: Duration
       dataset: fitbitsleeplogs
@@ -25,9 +39,13 @@ Healthkit:
   HeartRate:
     - measure: Type=="HeartRate"
       dataset: healthkitv2samples
+      lowerbound: 25
+      upperbound: 300
   PhysicalActivity:
     - measure: Type=="DailySteps"
       dataset: healthkitv2statistics
+      lowerbound: 1
+      upperbound: 200000
   Sleep:
     - measure: NA
       dataset: NA
