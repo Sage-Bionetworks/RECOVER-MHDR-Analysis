@@ -84,3 +84,12 @@ reduced_datasets <-
       datasets[[dataset]] %>% 
       select(any_of(c("ParticipantIdentifier", "StartDate", "EndDate", "Date", measures)))
   }, simplify = FALSE)
+
+reduced_datasets$healthkitv2samples <- 
+  reduced_datasets$healthkitv2samples %>% 
+  filter(Type=="HeartRate")
+
+reduced_datasets$healthkitv2statistics <- 
+  reduced_datasets$healthkitv2statistics %>% 
+  filter(Type=="DailySteps")
+
