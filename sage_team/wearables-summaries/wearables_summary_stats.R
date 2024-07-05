@@ -37,12 +37,30 @@ data_measures_df <-
   )
 
 # Read a dataset into a data frame
-dataset_path <- 
-  valid_paths[stringr::str_detect(valid_paths, dataset)]
-
-dataset <- 
-  arrow::open_dataset(
-    s3$path(
-      dataset_path
-    )
+datasets <- 
+  unique(
+    data_measures_df$dataset[data_measures_df$dataset!="NA"]
   )
+
+dataset_paths <- tibble(dataset = character(), path = character())
+dataset_paths <- 
+  sapply(datasets, function(dataset) {
+    path_exists <- 
+      stringr::str_detect(
+        valid_paths, 
+        stringr::regex(paste0(dataset,"$"))
+      )
+    matching_path <-
+      valid_paths[path_exists]
+  }, simplify = FALSE) %>% 
+  as_tibble() %>% 
+  pivot_longer(
+    cols = everything(), 
+    names_to = "dataset", 
+    values_to = "path"
+  )
+
+datasets <- 
+  dataset_paths %>% 
+  split(dataset_paths$dataset) %>% 
+  purrr::map(\(df) arrow::open_dataset(s3$path(df$path)))
