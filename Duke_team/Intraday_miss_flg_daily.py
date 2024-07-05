@@ -91,7 +91,9 @@ weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 # %%
 MAX_Size = 1000000
-unique_id_S2C5 = unique_id_S2C5_full[100:200]
+start_time = pd.Timestamp('2023-09-01')
+end_time = pd.Timestamp('2023-12-30')
+unique_id_S2C5 = unique_id_S2C5_full[50:200]
 for i, subject_id in enumerate(unique_id_S2C5):
     if i%10 == 0:
         print("test" + str(subject_id) + " " + str(i))
@@ -104,11 +106,11 @@ for i, subject_id in enumerate(unique_id_S2C5):
     intra_hr = intra_comb[intra_comb['Type']=='activities-heart']
     del intra_comb
     intra_hr['DateTime'] = pd.to_datetime(intra_hr.loc[:, 'DateTime'])
-    # intra_hr = intra_hr[(intra_hr['DateTime'] >= pd.Timestamp('2023-08-01')) & (intra_hr['DateTime'] < pd.Timestamp('2023-09-01'))]
+    intra_hr = intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)]
     intra_hr = intra_hr.loc[:,['ParticipantIdentifier', 'DateTime', 'Value']]
     if len(intra_hr)<2:
         print(intra_hr['DateTime'].min(), intra_hr['DateTime'].max())
-        print(str(subject_id))
+        print("skiped: " + str(subject_id))
         continue
 
     intervals = pd.date_range(intra_hr['DateTime'].min().normalize(), intra_hr['DateTime'].max().normalize() + pd.Timedelta(days=1) - pd.Timedelta(seconds=1), freq='15min')
@@ -146,22 +148,14 @@ for i, subject_id in enumerate(unique_id_S2C5):
 
     # Group by 15-minute intervals
     count_df['15_min_chunk'] = count_df['interval_start'].dt.time
-    count_df['weekday'] = count_df['interval_start'].dt.day_name()
-    # Calculate the ratio of True values for each 15-minute chunk
-    miss_ratio_h = count_df.groupby('15_min_chunk')['missflg'].mean().reset_index()
-    miss_ratio_week = count_df.groupby(['weekday', '15_min_chunk'])['missflg'].mean().reset_index()
+    count_df['date'] = count_df['interval_start'].dt.date
 
-    # To have a meaningful visualization with weekdays and 15-minute chunks, create a pivot table
-    pivot_table = miss_ratio_week.pivot(index='15_min_chunk', columns='weekday', values='missflg')
-    pivot_table = pivot_table.reindex(columns=weekdays_order, fill_value=pd.NA)
-    pivot_table = pivot_table.dropna(axis=1, how='all')
-    array = miss_ratio_h.iloc[:,1].values
 
-    # Save the pivot table to a CSV file
-    pivot_table.to_csv('./missratio_week/' + subject_id + '.csv')
+    # # Save the pivot table to a CSV file
+    count_df.to_csv('./miss_day_time/' + subject_id + '.csv')
 
-    # Save the array to a file
-    np.save('./missratio_h/' + subject_id + '.npy', array)
+    # # Save the array to a file
+    # np.save('./missratio_h/' + subject_id + '.npy', array)
 
 
 # %%
