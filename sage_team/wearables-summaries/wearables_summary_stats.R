@@ -52,7 +52,7 @@ data_measures_df <-
       )
   )
 
-# Read a dataset into a data frame
+# Extract datasets
 datasets <- 
   unique(
     data_measures_df$dataset[!is.na(data_measures_df$dataset)]
@@ -96,16 +96,281 @@ reduced_datasets <-
       }) %>% 
       unique()
     
-    dataset <- 
+    non_measure_cols <- c("ParticipantIdentifier", "StartDate", "EndDate", "Date")
+    
+    dataset <-
       datasets[[dataset]] %>% 
-      select(any_of(c("ParticipantIdentifier", "StartDate", "EndDate", "Date", measures)))
+      select(any_of(c(non_measure_cols, measures)))
+    
   }, simplify = FALSE)
 
-# Filter datasets
-reduced_datasets$healthkitv2samples <- 
-  reduced_datasets$healthkitv2samples %>% 
-  filter(Type=="HeartRate")
+# Fitbit
+datasets_fitbit <- reduced_datasets[str_detect(names(reduced_datasets), "fitbit")]
 
-reduced_datasets$healthkitv2statistics <- 
-  reduced_datasets$healthkitv2statistics %>% 
-  filter(Type=="DailySteps")
+## Heart Rate
+lower <- 
+  unique(
+    data_measures_df$lowerbound[
+      stringr::str_detect(data_measures_df$measure, "HeartRate") & data_measures_df$category=="HeartRate" & data_measures_df$platform=="Fitbit"
+    ]
+  )
+
+upper <- 
+  unique(
+    data_measures_df$upperbound[
+      stringr::str_detect(data_measures_df$measure, "HeartRate") & data_measures_df$category=="HeartRate" & data_measures_df$platform=="Fitbit"
+    ]
+  )
+
+tmp_hr <- 
+  list(
+    dailydata = 
+      datasets_fitbit$fitbitdailydata %>% 
+      select(ParticipantIdentifier, Date, RestingHeartRate) %>% 
+      mutate(RestingHeartRate=as.numeric(RestingHeartRate)) %>% 
+      filter(RestingHeartRate >= lower & RestingHeartRate <= upper) %>% 
+      rename(Datetime = Date, 
+             HeartRate = RestingHeartRate) %>% 
+      collect() %>% 
+      mutate(Datetime = lubridate::ymd_hms(Datetime)) %>% 
+      distinct() %>% 
+      mutate(date = lubridate::date(Datetime)),
+    activitylogs = 
+      datasets_fitbit$fitbitactivitylogs %>% 
+      select(ParticipantIdentifier, StartDate, AverageHeartRate) %>% 
+      mutate(AverageHeartRate=as.numeric(AverageHeartRate)) %>% 
+      filter(AverageHeartRate >= lower & AverageHeartRate <= upper) %>% 
+      rename(HeartRate = AverageHeartRate) %>% 
+      collect() %>% 
+      mutate(StartDate = lubridate::ymd_hms(StartDate)) %>% 
+      distinct() %>% 
+      mutate(date = lubridate::date(StartDate))
+  )
+
+### Count and range of unique dates of wearables data
+lapply(tmp_hr, function(x) {
+  n_distinct(x$date)
+})
+
+lapply(tmp_hr, function(x) {
+  summary(x$date)
+})
+
+## Physical Activity
+lower <- 
+  list(
+    minsactive = 
+      unique(
+        data_measures_df$lowerbound[
+          stringr::str_detect(data_measures_df$measure, "^(Minutes).*(Sedentary|Active)$") & data_measures_df$category=="PhysicalActivity" & data_measures_df$platform=="Fitbit"
+        ]
+      ),
+    steps = 
+      unique(
+        data_measures_df$lowerbound[
+          stringr::str_detect(data_measures_df$measure, "Steps") & data_measures_df$category=="PhysicalActivity" & data_measures_df$platform=="Fitbit"
+        ]
+      )
+  )
+
+upper <- 
+  list(
+    minsactive = 
+      unique(
+        data_measures_df$upperbound[
+          stringr::str_detect(data_measures_df$measure, "^(Minutes).*(Sedentary|Active)$") & data_measures_df$category=="PhysicalActivity" & data_measures_df$platform=="Fitbit"
+        ]
+      ),
+    steps = 
+      unique(
+        data_measures_df$upperbound[
+          stringr::str_detect(data_measures_df$measure, "Steps") & data_measures_df$category=="PhysicalActivity" & data_measures_df$platform=="Fitbit"
+        ]
+      )
+  )
+
+tmp_physact <- 
+  list(
+    minsactive =
+      datasets_fitbit$fitbitdailydata %>%
+      select(-any_of(c("RestingHeartRate", "Steps"))) %>%
+      mutate(across(-c(ParticipantIdentifier, Date), as.numeric)) %>%
+      filter(across(-c(ParticipantIdentifier, Date), ~ . >= lower$minsactive & . <= upper$minsactive)) %>%
+      rename(Datetime = Date) %>%
+      collect() %>%
+      mutate(Datetime = lubridate::ymd_hms(Datetime)) %>%
+      distinct() %>%
+      mutate(date = lubridate::date(Datetime)),
+    steps =
+      datasets_fitbit$fitbitdailydata %>%
+      select(ParticipantIdentifier, Date, Steps) %>%
+      mutate(across(-c(ParticipantIdentifier, Date), as.numeric)) %>%
+      filter(Steps >= lower$steps & Steps <= upper$steps) %>%
+      rename(Datetime = Date) %>%
+      collect() %>%
+      mutate(Datetime = lubridate::ymd_hms(Datetime)) %>%
+      distinct() %>%
+      mutate(date = lubridate::date(Datetime))
+  )
+
+### Count and range of unique dates of wearables data
+lapply(tmp_physact, function(x) {
+  n_distinct(x$date)
+})
+
+lapply(tmp_physact, function(x) {
+  summary(x$date)
+})
+
+## Sleep
+lower <- 
+  list(
+    duration = 
+      unique(
+        data_measures_df$lowerbound[
+          stringr::str_detect(data_measures_df$measure, "Duration") & data_measures_df$category=="Sleep" & data_measures_df$platform=="Fitbit"
+        ]
+      ),
+    efficiency = 
+      unique(
+        data_measures_df$lowerbound[
+          stringr::str_detect(data_measures_df$measure, "Efficiency") & data_measures_df$category=="Sleep" & data_measures_df$platform=="Fitbit"
+        ]
+      )
+  )
+
+upper <- 
+  list(
+    duration = 
+      unique(
+        data_measures_df$upperbound[
+          stringr::str_detect(data_measures_df$measure, "Duration") & data_measures_df$category=="Sleep" & data_measures_df$platform=="Fitbit"
+        ]
+      ),
+    efficiency = 
+      unique(
+        data_measures_df$upperbound[
+          stringr::str_detect(data_measures_df$measure, "Efficiency") & data_measures_df$category=="Sleep" & data_measures_df$platform=="Fitbit"
+        ]
+      )
+  )
+
+tmp_sleep <- 
+  list(
+    duration =
+      datasets_fitbit$fitbitsleeplogs %>%
+      select(-any_of(c("EndDate", "Efficiency"))) %>%
+      mutate(across(-c(ParticipantIdentifier, StartDate), as.numeric)) %>%
+      # filter(Duration >= lower$duration & Duration <= upper$duration) %>%
+      collect() %>%
+      mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
+      distinct() %>%
+      mutate(date = lubridate::date(StartDate)),
+    efficiency =
+      datasets_fitbit$fitbitsleeplogs %>%
+      select(-any_of(c("EndDate", "Duration"))) %>%
+      mutate(across(-c(ParticipantIdentifier, StartDate), as.numeric)) %>%
+      # filter(Efficiency >= lower$efficiency & Efficiency <= upper$efficiency) %>%
+      collect() %>%
+      mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
+      distinct() %>%
+      mutate(date = lubridate::date(StartDate))
+  )
+
+### Count and range of unique dates of wearables data
+lapply(tmp_sleep, function(x) {
+  n_distinct(x$date)
+})
+
+lapply(tmp_sleep, function(x) {
+  summary(x$date)
+})
+
+
+# Healthkit
+datasets_hk <- reduced_datasets[str_detect(names(reduced_datasets), "healthkit")]
+
+## Heart Rate
+lower <- 
+  unique(
+    data_measures_df$lowerbound[
+      str_detect(data_measures_df$category, "HeartRate") & str_detect(data_measures_df$platform, "Healthkit")
+    ]
+  ) %>% 
+  na.omit() %>% 
+  as.numeric()
+
+upper <- 
+  unique(
+    data_measures_df$upperbound[
+      str_detect(data_measures_df$category, "HeartRate") & str_detect(data_measures_df$platform, "Healthkit")
+    ]
+  ) %>% 
+  na.omit() %>% 
+  as.numeric()
+
+tmp_hr <- 
+  list(
+    heartrate = 
+      datasets_hk$healthkitv2samples %>% 
+      select(-any_of(c("Date"))) %>% 
+      filter(Type == "HeartRate") %>% 
+      mutate(Value = as.numeric(Value)) %>% 
+      filter(Value >= lower & Value <= upper) %>% 
+      collect() %>%
+      mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
+      distinct() %>%
+      mutate(date = lubridate::date(StartDate))
+  )
+
+### Count and range of unique dates of wearables data
+lapply(tmp_hr, function(x) {
+  n_distinct(x$date)
+})
+
+lapply(tmp_hr, function(x) {
+  summary(x$date)
+})
+  
+
+## Physical Activity
+lower <- 
+  unique(
+    data_measures_df$lowerbound[
+      str_detect(data_measures_df$category, "PhysicalActivity") & str_detect(data_measures_df$platform, "Healthkit")
+    ]
+  ) %>% 
+  na.omit() %>% 
+  as.numeric()
+
+upper <- 
+  unique(
+    data_measures_df$upperbound[
+      str_detect(data_measures_df$category, "PhysicalActivity") & str_detect(data_measures_df$platform, "Healthkit")
+    ]
+  ) %>% 
+  na.omit() %>% 
+  as.numeric()
+
+tmp_physact <- 
+  list(
+    steps = 
+      datasets_hk$healthkitv2statistics %>% 
+      select(-any_of(c("Date"))) %>% 
+      filter(Type == "DailySteps") %>% 
+      mutate(Value = as.numeric(Value)) %>% 
+      filter(Value >= lower & Value <= upper) %>% 
+      collect() %>%
+      mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
+      distinct() %>%
+      mutate(date = lubridate::date(StartDate))
+  )
+
+### Count and range of unique dates of wearables data
+lapply(tmp_physact, function(x) {
+  n_distinct(x$date)
+})
+
+lapply(tmp_physact, function(x) {
+  summary(x$date)
+})
