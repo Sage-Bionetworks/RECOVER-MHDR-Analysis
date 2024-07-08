@@ -103,7 +103,7 @@ print(distinct_date_ranges_table)
 
 ```{r provenance, echo=FALSE, results='asis'}
 
-this_file_path <- "~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/wearables_summary_stats.Rmd"
+this_file_path <- "sage_team/wearables-summaries/wearables_summary_stats.Rmd"
 
 latest_file_commit <- 
   gh::gh("/repos/:owner/:repo/commits", 
