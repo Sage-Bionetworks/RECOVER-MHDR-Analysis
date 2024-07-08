@@ -1,9 +1,9 @@
-source("sage_team/wearables-summaries/connect_to_remote.R")
+source("~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/connect_to_remote.R")
 
 library(tidyverse)
 
 data_measures <- 
-  yaml::read_yaml("sage_team/wearables-summaries/measures-per-platform.yaml")
+  yaml::read_yaml("~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/measures-per-platform.yaml")
 
 data_measures_df <- 
   tibble(
@@ -124,7 +124,7 @@ upper <-
 
 tmp_hr <- 
   list(
-    dailydata = 
+    RestingHeartRate = 
       datasets_fitbit$fitbitdailydata %>% 
       select(ParticipantIdentifier, Date, RestingHeartRate) %>% 
       mutate(RestingHeartRate=as.numeric(RestingHeartRate)) %>% 
@@ -135,7 +135,7 @@ tmp_hr <-
       mutate(Datetime = lubridate::ymd_hms(Datetime)) %>% 
       distinct() %>% 
       mutate(date = lubridate::date(Datetime)),
-    activitylogs = 
+    AverageHeartRate = 
       datasets_fitbit$fitbitactivitylogs %>% 
       select(ParticipantIdentifier, StartDate, AverageHeartRate) %>% 
       mutate(AverageHeartRate=as.numeric(AverageHeartRate)) %>% 
@@ -146,15 +146,6 @@ tmp_hr <-
       distinct() %>% 
       mutate(date = lubridate::date(StartDate))
   )
-
-### Count and range of unique dates of wearables data
-lapply(tmp_hr, function(x) {
-  n_distinct(x$date)
-})
-
-lapply(tmp_hr, function(x) {
-  summary(x$date)
-})
 
 ## Physical Activity
 lower <- 
@@ -191,7 +182,7 @@ upper <-
 
 tmp_physact <- 
   list(
-    minsactive =
+    MinsActivity =
       datasets_fitbit$fitbitdailydata %>%
       select(-any_of(c("RestingHeartRate", "Steps"))) %>%
       mutate(across(-c(ParticipantIdentifier, Date), as.numeric)) %>%
@@ -201,7 +192,7 @@ tmp_physact <-
       mutate(Datetime = lubridate::ymd_hms(Datetime)) %>%
       distinct() %>%
       mutate(date = lubridate::date(Datetime)),
-    steps =
+    Steps =
       datasets_fitbit$fitbitdailydata %>%
       select(ParticipantIdentifier, Date, Steps) %>%
       mutate(across(-c(ParticipantIdentifier, Date), as.numeric)) %>%
@@ -212,15 +203,6 @@ tmp_physact <-
       distinct() %>%
       mutate(date = lubridate::date(Datetime))
   )
-
-### Count and range of unique dates of wearables data
-lapply(tmp_physact, function(x) {
-  n_distinct(x$date)
-})
-
-lapply(tmp_physact, function(x) {
-  summary(x$date)
-})
 
 ## Sleep
 lower <- 
@@ -257,7 +239,7 @@ upper <-
 
 tmp_sleep <- 
   list(
-    duration =
+    Duration =
       datasets_fitbit$fitbitsleeplogs %>%
       select(-any_of(c("EndDate", "Efficiency"))) %>%
       mutate(across(-c(ParticipantIdentifier, StartDate), as.numeric)) %>%
@@ -266,7 +248,7 @@ tmp_sleep <-
       mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
       distinct() %>%
       mutate(date = lubridate::date(StartDate)),
-    efficiency =
+    Efficiency =
       datasets_fitbit$fitbitsleeplogs %>%
       select(-any_of(c("EndDate", "Duration"))) %>%
       mutate(across(-c(ParticipantIdentifier, StartDate), as.numeric)) %>%
@@ -277,15 +259,15 @@ tmp_sleep <-
       mutate(date = lubridate::date(StartDate))
   )
 
-### Count and range of unique dates of wearables data
-lapply(tmp_sleep, function(x) {
-  n_distinct(x$date)
-})
-
-lapply(tmp_sleep, function(x) {
-  summary(x$date)
-})
-
+summary_stats <- 
+  list(
+    Fitbit = 
+      list(
+        HeartRate = tmp_hr,
+        PhysicalActivity = tmp_physact,
+        Sleep = tmp_sleep
+      )
+  )
 
 # Healthkit
 datasets_hk <- reduced_datasets[str_detect(names(reduced_datasets), "healthkit")]
@@ -311,7 +293,7 @@ upper <-
 
 tmp_hr <- 
   list(
-    heartrate = 
+    HeartRate = 
       datasets_hk$healthkitv2samples %>% 
       select(-any_of(c("Date"))) %>% 
       filter(Type == "HeartRate") %>% 
@@ -322,16 +304,6 @@ tmp_hr <-
       distinct() %>%
       mutate(date = lubridate::date(StartDate))
   )
-
-### Count and range of unique dates of wearables data
-lapply(tmp_hr, function(x) {
-  n_distinct(x$date)
-})
-
-lapply(tmp_hr, function(x) {
-  summary(x$date)
-})
-  
 
 ## Physical Activity
 lower <- 
@@ -354,7 +326,7 @@ upper <-
 
 tmp_physact <- 
   list(
-    steps = 
+    DailySteps = 
       datasets_hk$healthkitv2statistics %>% 
       select(-any_of(c("Date"))) %>% 
       filter(Type == "DailySteps") %>% 
@@ -366,11 +338,8 @@ tmp_physact <-
       mutate(date = lubridate::date(StartDate))
   )
 
-### Count and range of unique dates of wearables data
-lapply(tmp_physact, function(x) {
-  n_distinct(x$date)
-})
-
-lapply(tmp_physact, function(x) {
-  summary(x$date)
-})
+summary_stats$Healthkit <- 
+  list(
+    HeartRate = tmp_hr,
+    PhysicalActivity = tmp_physact
+  )
