@@ -1,0 +1,116 @@
+---
+title: "Wearables Summary Stats"
+author: "Pranav Anbarasu"
+date: "`r base::date()`"
+output:
+  html_document:
+    embed-resources: true
+    toc: true
+    toc_float:
+      smooth-scroll: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/')
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_chunk$set(fig.height = 8)
+knitr::opts_chunk$set(fig.width = 15)
+```
+
+```{r source ETL scripts, include=FALSE, warning=FALSE, message=FALSE}
+source("wearables_summary_stats.R")
+```
+
+## Data Measures Used
+
+```{r}
+data_measures_df
+```
+
+## Count of unique dates of wearables data
+
+```{r}
+distinct_dates <- 
+  lapply(summary_stats, function(p) {
+    lapply(p, function(c) {
+      lapply(c, function(m) {
+        n_distinct(m$date)
+      })
+    })
+  })
+
+tibble::tibble(
+  Platform = rep(names(distinct_dates), times = sapply(distinct_dates, function(x) length(unlist(x)))),
+  Category = unlist(lapply(distinct_dates, function(x) rep(names(x), each = length(unlist(x[[1]]))))),
+  Measure = unlist(lapply(distinct_dates, function(x) unlist(lapply(x, names)))),
+  DateCount = unlist(distinct_dates)
+)
+
+```
+
+## Range of unique dates of wearables data
+
+```{r}
+distinct_date_ranges <- 
+  lapply(summary_stats, function(p) {
+    lapply(p, function(c) {
+      lapply(c, function(m) {
+        summary(m$date)
+      })
+    })
+  })
+
+convert_to_table <- function(data) {
+  result <- tibble::tibble(Platform = character(),
+                           Category = character(),
+                           Measure = character(),
+                           Min = Date(),
+                           Q1 = Date(),
+                           Median = Date(),
+                           Mean = Date(),
+                           Q3 = Date(),
+                           Max = Date())
+  
+  for (platform in names(data)) {
+    for (category in names(data[[platform]])) {
+      for (measure in names(data[[platform]][[category]])) {
+        summary_stats2 <- data[[platform]][[category]][[measure]]
+        result <- result %>%
+          add_row(
+            Platform = platform,
+            Category = category,
+            Measure = measure,
+            Min = as.Date(as.numeric(summary_stats2["Min."])),
+            Q1 = as.Date(as.numeric(summary_stats2["1st Qu."])),
+            Median = as.Date(as.numeric(summary_stats2["Median"])),
+            Mean = as.Date(as.numeric(summary_stats2["Mean"])),
+            Q3 = as.Date(as.numeric(summary_stats2["3rd Qu."])),
+            Max = as.Date(as.numeric(summary_stats2["Max."]))
+          )
+      }
+    }
+  }
+  
+  return(result)
+}
+
+distinct_date_ranges_table <- convert_to_table(distinct_date_ranges)
+
+print(distinct_date_ranges_table)
+```
+
+## Code used 
+
+```{r provenance, echo=FALSE, results='asis'}
+
+this_file_path <- "~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/wearables_summary_stats.Rmd"
+
+latest_file_commit <- 
+  gh::gh("/repos/:owner/:repo/commits", 
+         owner = "pranavanba", 
+         repo = "RECOVER-MHDR-Analysis", 
+         path = this_file_path)[[1]]$commit$url %>% 
+  {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+
+cat("[GitHub Code](", latest_file_commit, ")")
+```
