@@ -64,8 +64,7 @@ mt = mt.sum(axis=2)
 df = pd.DataFrame(mt, index=file_names, columns=range(mt.shape[1]))
 
 # %%
-
-kmeans = KMeans(n_clusters=4)
+kmeans = KMeans(n_clusters=5)
 kmeans.fit(combined_matrix)
 clusters = kmeans.labels_
 
@@ -75,9 +74,9 @@ df.drop(columns='rk', inplace=True)
 time_chunk_1day = pd.date_range(start=pd.Timestamp('2023-09-01'), end=pd.Timestamp('2024-02-24 23:49:00'), freq='24h')
 
 # %%
-df=df.loc[:,80:100] 
 plt.pcolormesh(df.to_numpy() / 96, cmap='Blues_r')
 plt.ylabel('Person ID')
 plt.xticks(np.arange(0, df.shape[1], 15), time_chunk_1day[np.arange(0, df.shape[1], 15)], rotation=90)
+plt.colorbar(label='Average missingness across every day within 6 months')
 plt.xlabel('Time Range')
 # %%

@@ -39,4 +39,76 @@ plt.ylabel('Person ID')
 plt.xlabel('Time in a day')
 plt.show()
 
+# %% Smooth across one hour
+mt = combined_matrix.copy()
+mt = mt.reshape(mt.shape[0], mt.shape[1] // 4, 4).astype(float)
+mt = mt.mean(axis=2)
+df = pd.DataFrame(mt, index=file_names, columns=range(mt.shape[1]))
+
+# %%
+kmeans = KMeans(n_clusters=7)
+kmeans.fit(combined_matrix)
+clusters = kmeans.labels_
+
+df['rk'] = clusters
+df = df.sort_values('rk')
+df.drop(columns='rk', inplace=True)
+time_chunk_1hour = pd.date_range(start=pd.Timestamp('00:00'), end=pd.Timestamp('23:49'), freq='1h').time
+
+# %%
+plt.pcolormesh(df.to_numpy(), cmap='Blues_r')
+plt.ylabel('Person ID')
+plt.xticks(np.arange(0, df.shape[1], 1), time_chunk_1hour[np.arange(0, df.shape[1], 1)], rotation=90)
+plt.colorbar(label='Average missingness across every day within 6 months')
+plt.xlabel('Time Range')
+
+
+# %%
+# Smooth across one hour
+mt = combined_matrix.copy()
+mt = mt.reshape(mt.shape[0], mt.shape[1] // 4, 4).astype(float)
+mt = mt.mean(axis=2)
+df = pd.DataFrame(mt, index=file_names, columns=range(mt.shape[1]))
+
+# Determine the optimal number of clusters using the elbow method
+wcss = []
+K = range(1, 15)
+for k in K:
+    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans.fit(df)
+    wcss.append(kmeans.inertia_)
+
+# Plot the WCSS to find the elbow
+plt.figure(figsize=(10, 6))
+plt.plot(K, wcss, 'bo-')
+plt.xlabel('Number of Clusters')
+plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
+plt.title('Elbow Method for Optimal Number of Clusters')
+plt.show()
+
+# Assuming the elbow point is determined to be 7 for demonstration
+optimal_k = 6
+
+# Fit KMeans with the optimal number of clusters
+kmeans = KMeans(n_clusters=optimal_k, random_state=3)
+kmeans.fit(df)
+clusters = kmeans.labels_
+
+# Add cluster labels to the dataframe and sort by cluster
+df['rk'] = clusters
+df = df.sort_values('rk')
+df.drop(columns='rk', inplace=True)
+time_chunk_1hour = pd.date_range(start=pd.Timestamp('00:00'), end=pd.Timestamp('23:49'), freq='1h').time
+
+# Plot the clustered heatmap
+plt.figure(figsize=(12, 8))
+plt.pcolormesh(df.to_numpy(), cmap='Blues_r')
+plt.ylabel('Person ID')
+plt.xticks(np.arange(0, df.shape[1], 1), [t.strftime('%H:%M') for t in time_chunk_1hour[np.arange(0, df.shape[1], 1)]], rotation=90)
+plt.colorbar(label='Average missingness across every day within 6 months')
+plt.xlabel('Time Range')
+plt.title('Heatmap of Average Missingness')
+plt.show()
+
+
 # %%
