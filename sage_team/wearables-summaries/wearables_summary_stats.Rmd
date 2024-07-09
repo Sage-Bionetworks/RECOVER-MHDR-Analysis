@@ -38,14 +38,16 @@ synapser::File("data_measures_df.csv",
 
 ```
 
-## Count of unique dates of wearables data
+## Total days of wearables data
+
+*This is the count of the number of distinct combinations of ParticipantIdentifier and Date*
 
 ```{r}
 distinct_dates <- 
   lapply(summary_stats, function(p) {
     lapply(p, function(c) {
       lapply(c, function(m) {
-        n_distinct(m$date)
+        n_distinct(m$ParticipantIdentifier, m$date)
       })
     })
   })
