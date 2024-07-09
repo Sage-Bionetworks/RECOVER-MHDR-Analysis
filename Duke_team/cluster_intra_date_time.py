@@ -2,6 +2,11 @@
 import numpy as np
 import os
 import pandas as pd
+import matplotlib.pyplot as plt
+from data_utils import *
+from constant import *
+from sklearn.cluster import KMeans
+
 
 # Specify the folder containing the .npy files
 folder_path = './miss_day_time'
@@ -10,37 +15,19 @@ folder_path = './miss_day_time'
 file_names = os.listdir(folder_path)
 
 # %%
-def add_rows(df, start_date, end_date):
-    # Create new date range
-    new_dates = pd.date_range(start=start_date, end=end_date, freq='15min')
-
-    # Generate new DataFrame
-    new_data = {
-        'interval_start': new_dates,
-        'missflg': [True] * len(new_dates),
-        '15_min_chunk': new_dates.strftime('%H:%M:%S'),
-        'date': new_dates.date
-    }
-    new_df = pd.DataFrame(new_data)
-    new_data['interval_start'] = pd.to_datetime(new_data['interval_start'])
-    df.set_index('interval_start', inplace=True)
-    new_df.set_index('interval_start', inplace=True)
-    new_df.drop(df.index, inplace=True)
-    # Combine old and new DataFrames
-    combined_df = pd.concat([df, new_df])
-    # Sort by 'interval_start'
-    combined_df = combined_df.sort_values(by='interval_start').reset_index(drop=True)
-    combined_df.drop(combined_df.tail(1).index,inplace=True)
-    print(len(combined_df))
-    return combined_df
-# %%
 # # Load the arrays and combine them into a matrix
 df_list = [pd.read_csv(os.path.join(folder_path, file), index_col=[0]) for file in file_names]
+for i in range(len(df_list)):
+    print(file_names[i])
+    df_list[i]['interval_start'] = pd.to_datetime(df_list[i]['interval_start'])
+    df_list[i] = clean_rows(df_list[i], START_TIME, END_TIME)
+
+# %%
 array_list = []
 # combined_matrix = np.stack(arrays, axis=0)
 for df in df_list:
     df['interval_start'] = pd.to_datetime(df['interval_start'])
-    df = add_rows(df, '2023-08-01', '2023-12-30').copy()
+    df = add_rows(df, START_TIME, END_TIME).copy()
     array_list.append(df['missflg'].values)
     # print(len(df))
 # print(combined_matrix)
@@ -49,9 +36,8 @@ for df in df_list:
 combined_matrix = np.stack(array_list, axis=0)
 
 # %%
-df = pd.DataFrame(combined_matrix, index=file_names, columns=range(14496))
+df = pd.DataFrame(combined_matrix, index=file_names, columns=range(combined_matrix.shape[1]))
 # %%
-from sklearn.cluster import KMeans
 
 kmeans = KMeans(n_clusters=4)
 kmeans.fit(combined_matrix)
@@ -62,49 +48,36 @@ df['rk'] = clusters
 df = df.sort_values('rk')
 # %%
 df.drop(columns='rk', inplace=True)
-# %%
-import matplotlib.pyplot as plt
-after_cluster = combined_matrix[clusters]
-plt.figure(figsize=(10, 6))
-plt.pcolormesh(df.columns.values, df.index, df.to_numpy()+0.0, shading='auto', cmap='Blues_r')
-plt.colorbar(label='Miss Ratio')
-
-plt.show()
 
 # %%
-from missing_pattern_plot import MissingPatternPlot
+time_range_15min = pd.date_range(start=pd.Timestamp('2023-09-01'), end=pd.Timestamp('2024-02-24 23:49:00'), freq='15min')
 # %%
-plot_data = MissingPatternPlot.initialize(df, None, 'study_period', clusters)
-plot_data.plot('cluster', direction=False, y_label='PERSON_ID', y_ticks=True)
+# plt.imshow(df2.to_numpy(), aspect=100, cmap='Blues')
+plt.pcolormesh(df.to_numpy().astype("int"), cmap='Blues_r')
+plt.ylabel('Person ID')
+plt.xticks(np.arange(0, 16692, 600), time_range_15min[np.arange(0, 16692, 600)], rotation=90)
+plt.xlabel('Time Range')
 # %%
-plt.imshow(df.to_numpy(), aspect='auto', cmap='viridis')
-plt.colorbar(label='Miss Ratio')
+mt = combined_matrix.copy()
+mt = mt.reshape(mt.shape[0], mt.shape[1] // 96, 96).astype(int)
+mt = mt.sum(axis=2)
+df = pd.DataFrame(mt, index=file_names, columns=range(mt.shape[1]))
 
 # %%
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 
-# Generate the date range from 0:00 to 24:00 with 15-minute intervals
-time_chunks = pd.date_range(start='00:00', end='23:59', freq='15min').strftime('%H:%M')
+kmeans = KMeans(n_clusters=4)
+kmeans.fit(combined_matrix)
+clusters = kmeans.labels_
 
-# Sample data for demonstration (for example purposes, generating a random matrix)
-data = np.random.rand(len(time_chunks), 10)  # 10 subjects and 96 time slots (15 minutes each in 24 hours)
+df['rk'] = clusters
+df = df.sort_values('rk')
+df.drop(columns='rk', inplace=True)
+time_range_1day = pd.date_range(start=pd.Timestamp('2023-09-01'), end=pd.Timestamp('2024-02-24 23:49:00'), freq='24h')
 
-# Plot using imshow
-plt.figure(figsize=(12, 6))
-plt.imshow(data, aspect='auto', cmap='viridis')
+# %%
 
-# Set x-ticks
-plt.xticks(ticks=np.arange(len(time_chunks)), labels=time_chunks, rotation=90, step=4)
-
-# Set y-label and x-label
-plt.ylabel('Subjects')
-plt.xlabel('Time of Day')
-
-# Display the plot
-plt.colorbar(label='Random Value')
-plt.tight_layout()
-plt.show()
-
+plt.pcolormesh(df.to_numpy() / 96, cmap='Blues_r')
+plt.ylabel('Person ID')
+plt.xticks(np.arange(0, df.shape[1], 15), time_range_1day[np.arange(0, df.shape[1], 15)], rotation=90)
+plt.xlabel('Time Range')
 # %%
