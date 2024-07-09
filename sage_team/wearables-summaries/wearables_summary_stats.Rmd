@@ -24,7 +24,15 @@ source("wearables_summary_stats.R")
 ## Data Measures Used
 
 ```{r}
-data_measures_df
+data_measures_df %>% 
+  knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+
+write.csv(data_measures_df, "data_measures_df.csv", row.names = F)
+
+synapser::File("data_measures_df.csv", 
+               description = "Data measures used for summary stats", 
+               parent = "syn61671543") %>% 
+  synapser::synStore()
 ```
 
 ## Count of unique dates of wearables data
@@ -39,13 +47,23 @@ distinct_dates <-
     })
   })
 
-tibble::tibble(
-  Platform = rep(names(distinct_dates), times = sapply(distinct_dates, function(x) length(unlist(x)))),
-  Category = unlist(lapply(distinct_dates, function(x) rep(names(x), each = length(unlist(x[[1]]))))),
-  Measure = unlist(lapply(distinct_dates, function(x) unlist(lapply(x, names)))),
-  DateCount = unlist(distinct_dates)
-)
+distinct_dates_df <- 
+  tibble::tibble(
+    Platform = rep(names(distinct_dates), times = sapply(distinct_dates, function(x) length(unlist(x)))),
+    Category = unlist(lapply(distinct_dates, function(x) rep(names(x), each = length(unlist(x[[1]]))))),
+    Measure = unlist(lapply(distinct_dates, function(x) unlist(lapply(x, names)))),
+    DateCount = unlist(distinct_dates)
+  )
 
+distinct_dates_df %>% 
+  knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+
+write.csv(distinct_dates_df, "distinct_dates_df.csv", row.names = F)
+
+synapser::File("distinct_dates_df.csv", 
+               description = "Count of unique dates of wearables data", 
+               parent = "syn61671543") %>% 
+  synapser::synStore()
 ```
 
 ## Range of unique dates of wearables data
@@ -96,7 +114,16 @@ convert_to_table <- function(data) {
 
 distinct_date_ranges_table <- convert_to_table(distinct_date_ranges)
 
-print(distinct_date_ranges_table)
+distinct_date_ranges_table %>% 
+  knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+
+write.csv(distinct_date_ranges_table, "distinct_date_ranges_table.csv", row.names = F)
+
+synapser::File("distinct_date_ranges_table.csv", 
+               description = "Range of unique dates of wearables data", 
+               parent = "syn61671543") %>% 
+  synapser::synStore()
+
 ```
 
 ## Code used 
