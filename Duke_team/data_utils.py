@@ -403,3 +403,35 @@ def round_to_nearest_interval(dt, interval_size):
     """
     rounded_minute = (dt.minute // interval_size) * interval_size
     return dt.replace(minute=rounded_minute, second=0, microsecond=0)
+
+def add_rows(df, start_date, end_date):
+    # Create new date range
+    new_dates = pd.date_range(start=start_date, end=end_date, freq='15min')
+
+    # Generate new DataFrame
+    new_data = {
+        'interval_start': new_dates,
+        'missflg': [True] * len(new_dates),
+        '15_min_chunk': new_dates.strftime('%H:%M:%S'),
+        'date': new_dates.date
+    }
+    new_df = pd.DataFrame(new_data)
+    new_data['interval_start'] = pd.to_datetime(new_data['interval_start'])
+    df.set_index('interval_start', inplace=True)
+    new_df.set_index('interval_start', inplace=True)
+    new_df.drop(df.index, inplace=True, errors='ignore')
+    # Combine old and new DataFrames
+    combined_df = pd.concat([df, new_df])
+    # Sort by 'interval_start'
+    combined_df = combined_df.sort_values(by='interval_start').reset_index(drop=True)
+    combined_df.drop(combined_df.tail(1).index,inplace=True)
+    print(len(combined_df))
+    return combined_df
+
+def clean_rows(df, start_date, end_date):
+    # Drop rows outside of the date range
+    df = df[(df['interval_start'] >= start_date) & (df['interval_start'] <= end_date)]
+    if len(df) < 2:
+        print("no data")
+        return None
+    return df
