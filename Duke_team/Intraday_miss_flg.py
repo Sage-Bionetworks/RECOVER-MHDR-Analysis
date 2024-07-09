@@ -91,7 +91,7 @@ weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 # %%
 MAX_Size = 1000000
-unique_id_S2C5 = unique_id_S2C5_full[100:200]
+unique_id_S2C5 = unique_id_S2C5_full[100:]
 for i, subject_id in enumerate(unique_id_S2C5):
     if i%10 == 0:
         print("test" + str(subject_id) + " " + str(i))

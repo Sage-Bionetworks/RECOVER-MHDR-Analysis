@@ -91,8 +91,8 @@ weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 
 # %%
 MAX_Size = 1000000
-start_time = pd.Timestamp('2023-09-01')
-end_time = pd.Timestamp('2024-02-25')
+start_time = START_TIME 
+end_time = END_TIME
 unique_id_S2C5 = unique_id_S2C5_full[100:]
 for i, subject_id in enumerate(unique_id_S2C5):
     if i%10 == 0:

@@ -72,12 +72,12 @@ clusters = kmeans.labels_
 df['rk'] = clusters
 df = df.sort_values('rk')
 df.drop(columns='rk', inplace=True)
-time_range_1day = pd.date_range(start=pd.Timestamp('2023-09-01'), end=pd.Timestamp('2024-02-24 23:49:00'), freq='24h')
+time_chunk_1day = pd.date_range(start=pd.Timestamp('2023-09-01'), end=pd.Timestamp('2024-02-24 23:49:00'), freq='24h')
 
 # %%
-
+df=df.loc[:,80:100] 
 plt.pcolormesh(df.to_numpy() / 96, cmap='Blues_r')
 plt.ylabel('Person ID')
-plt.xticks(np.arange(0, df.shape[1], 15), time_range_1day[np.arange(0, df.shape[1], 15)], rotation=90)
+plt.xticks(np.arange(0, df.shape[1], 15), time_chunk_1day[np.arange(0, df.shape[1], 15)], rotation=90)
 plt.xlabel('Time Range')
 # %%
