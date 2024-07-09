@@ -21,6 +21,8 @@ knitr::opts_chunk$set(fig.width = 15)
 source("wearables_summary_stats.R")
 ```
 
+All data from `r archive_path`
+
 ## Data Measures Used
 
 ```{r}
