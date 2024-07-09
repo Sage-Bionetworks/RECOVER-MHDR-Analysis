@@ -28,11 +28,14 @@ data_measures_df %>%
   knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
 write.csv(data_measures_df, "data_measures_df.csv", row.names = F)
+```
 
+```{r, include=FALSE}
 synapser::File("data_measures_df.csv", 
                description = "Data measures used for summary stats", 
                parent = "syn61671543") %>% 
   synapser::synStore()
+
 ```
 
 ## Count of unique dates of wearables data
@@ -59,7 +62,9 @@ distinct_dates_df %>%
   knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
 write.csv(distinct_dates_df, "distinct_dates_df.csv", row.names = F)
+```
 
+```{r, include=FALSE}
 synapser::File("distinct_dates_df.csv", 
                description = "Count of unique dates of wearables data", 
                parent = "syn61671543") %>% 
@@ -118,12 +123,13 @@ distinct_date_ranges_table %>%
   knitr::kable(format = "markdown", format.args = list(big.mark = ","))
 
 write.csv(distinct_date_ranges_table, "distinct_date_ranges_table.csv", row.names = F)
+```
 
+```{r, include=FALSE}
 synapser::File("distinct_date_ranges_table.csv", 
                description = "Range of unique dates of wearables data", 
                parent = "syn61671543") %>% 
   synapser::synStore()
-
 ```
 
 ## Code used 
