@@ -40,7 +40,8 @@ synapser::File("data_measures_df.csv",
 
 ## Total days of wearables data
 
-*This is the count of the number of distinct combinations of ParticipantIdentifier and Date*
+- `DateCount`: count of the number of distinct combinations of ParticipantIdentifier and Date
+- `Median`: median number of days of data per participant
 
 ```{r}
 distinct_dates <- 
@@ -52,12 +53,29 @@ distinct_dates <-
     })
   })
 
+
+median_days <- 
+  lapply(summary_stats, function(p) {
+    lapply(p, function(c) {
+      lapply(c, function(m) {
+        m %>% 
+          group_by(ParticipantIdentifier) %>% 
+          distinct(date) %>% 
+          count(date) %>% 
+          summarise(tot = sum(n)) %>% 
+          summarise(med = median(tot)) %>% 
+          as.numeric()
+      })
+    })
+  })
+
 distinct_dates_df <- 
   tibble::tibble(
     Platform = rep(names(distinct_dates), times = sapply(distinct_dates, function(x) length(unlist(x)))),
     Category = unlist(lapply(distinct_dates, function(x) rep(names(x), each = length(unlist(x[[1]]))))),
     Measure = unlist(lapply(distinct_dates, function(x) unlist(lapply(x, names)))),
-    DateCount = unlist(distinct_dates)
+    DateCount = unlist(distinct_dates),
+    Median = unlist(median_days)
   )
 
 distinct_dates_df %>% 
