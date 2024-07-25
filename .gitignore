@@ -2,3 +2,4 @@ core.2812
 core.*
 Duke_team/core.*
 dashboards/**/*.csv
+dashboards/**/*cache*
