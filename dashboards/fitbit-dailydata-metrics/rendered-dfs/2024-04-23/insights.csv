@@ -1,5 +1,0 @@
-"device","category","measure","n_records","n_complete","n_complete_nonzero","n_participants_with_complete_records","n_participants_with_complete_nonzero_records","avg_n_days_of_complete_nonzero_data","avg_n_days_contributed_since_devices_connected_date_all_participants","proportion_avg_n_days_contributed_since_devices_connected_date_all_participants","avg_total_wear_time_since_devices_connected_date_all_participants","proportion_avg_total_wear_time_since_devices_connected_date_all_participants"
-"fitbit","heartrate","HeartRateIntradayMinuteCount",1334933,1152962,316692,3269,2450,129.262040816327,119.61308793456,0.633219094166659,1026.19079754601,0.712633128834356
-"fitbit","steps","Steps",1334933,1303136,481784,3236,2483,194.033024567056,124.945417515275,0.664066298220127,NA,NA
-"fitbit","spo2","SpO2_Avg",1334933,264061,264061,2192,2192,120.465784671533,92.8985707699401,0.489563293208394,NA,NA
-"fitbit","hrv","Hrv_DailyRmssd",1334933,274948,274948,2071,2071,132.760985031386,93.14599609375,0.487649482123326,NA,NA
