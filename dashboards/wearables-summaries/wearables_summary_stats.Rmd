@@ -11,14 +11,14 @@ output:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/')
+knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/dashboards/wearables-summaries/')
 knitr::opts_chunk$set(echo = FALSE)
 knitr::opts_chunk$set(fig.height = 8)
 knitr::opts_chunk$set(fig.width = 15)
 ```
 
 ```{r source ETL scripts, include=FALSE, warning=FALSE, message=FALSE}
-source("wearables_summary_stats.R")
+source("etl.R")
 ```
 
 All data from `r archive_path`
@@ -158,7 +158,7 @@ synapser::File("distinct_date_ranges_table.csv",
 
 ```{r provenance, echo=FALSE, results='asis'}
 
-this_file_path <- "sage_team/wearables-summaries/wearables_summary_stats.Rmd"
+this_file_path <- "dashboards/wearables-summaries/wearables_summary_stats.Rmd"
 
 latest_file_commit <- 
   gh::gh("/repos/:owner/:repo/commits", 

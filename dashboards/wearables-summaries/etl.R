@@ -1,9 +1,9 @@
-source("~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/connect_to_remote.R")
+source("~/RECOVER-MHDR-Analysis/dashboards/wearables-summaries/connect_to_remote.R")
 
 library(tidyverse)
 
 data_measures <- 
-  yaml::read_yaml("~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/measures-per-platform.yaml")
+  yaml::read_yaml("~/RECOVER-MHDR-Analysis/dashboards/wearables-summaries/measures-per-platform.yaml")
 
 data_measures_df <- 
   tibble(

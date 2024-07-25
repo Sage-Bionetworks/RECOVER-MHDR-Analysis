@@ -9,7 +9,7 @@ DASHBOARD_FOLDER_SYNID <- "syn61348473"
 FOLDER_NAME <- "Wearables Summary Stats"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
-  file = "~/RECOVER-MHDR-Analysis/sage_team/wearables-summaries/wearables_summary_stats.Rmd",
+  file = "~/RECOVER-MHDR-Analysis/dashboards/wearables-summaries/wearables_summary_stats.Rmd",
   parentId = DASHBOARD_FOLDER_SYNID,
   folderName = FOLDER_NAME)
 
