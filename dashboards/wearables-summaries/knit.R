@@ -14,3 +14,4 @@ knit2synapse:::createAndKnitToFolderEntityClient(
   folderName = FOLDER_NAME)
 
 tictoc::toc()
+
