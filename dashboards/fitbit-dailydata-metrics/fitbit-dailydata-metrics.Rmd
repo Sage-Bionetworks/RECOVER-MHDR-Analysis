@@ -1,0 +1,946 @@
+---
+title: "Fitbit DailyData Metrics"
+author: "Pranav Anbarasu"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    embed-resources: true
+    toc: true
+    toc_float:
+      smooth-scroll: true
+---
+
+```{r setup, include=FALSE}
+
+knitr::opts_chunk$set(echo = FALSE)
+knitr::opts_knit$set(root.dir = '~/RECOVER-MHDR-Analysis/')
+knitr::opts_chunk$set(fig.height = 8)
+knitr::opts_chunk$set(fig.width = 15)
+knitr::opts_chunk$set(warning = FALSE)
+
+```
+
+```{r libraries and archive version, include=FALSE, warning=FALSE, message=FALSE}
+
+library(lubridate)
+library(stringr)
+library(dplyr)
+library(arrow)
+library(tidyr)
+library(synapser)
+library(knit2synapse)
+library(ggpubr)
+
+synapser::synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
+
+ARCHIVE_VERSION <- "2024-06-13"
+
+if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/fitbit-dailydata-metrics/rendered-dfs/"))) {
+  dir.create(glue::glue("./dashboards/fitbit-dailydata-metrics/rendered-dfs/{ARCHIVE_VERSION}/"))
+}
+
+```
+
+Using data from external parquet archive version: `r ARCHIVE_VERSION`
+
+```{r helper functions, include=FALSE}
+
+num_records_total <- function(df, measure) {
+  df %>% 
+    select(all_of(measure)) %>% 
+    nrow()
+}
+
+num_records_complete <- function(df, measure) {
+  df %>% 
+    select(all_of(measure)) %>% 
+    drop_na() %>% 
+    nrow()
+}
+
+num_records_complete_nonzero <- function(df, measure) {
+  df %>%
+    select(all_of(measure)) %>%
+    filter(.[[measure]]!=0) %>%
+    drop_na() %>%
+    nrow()
+}
+
+num_participants_with_records <- function(df, measure) {
+  df$ParticipantIdentifier[!is.na(df[[measure]])] %>%
+    unique() %>%
+    length()
+}
+
+num_participants_with_records_nonzero <- function(df, measure) {
+  df$ParticipantIdentifier[!is.na(df[[measure]]) & df[[measure]]!=0] %>%
+    unique() %>%
+    length()
+}
+
+days_present_nonzero_per_participant <- function(df, measure) {
+  df %>% 
+    select(ParticipantIdentifier, Date, measure) %>% 
+    mutate(Date = as_date(Date)) %>% 
+    drop_na(measure) %>% 
+    filter(.[[measure]]!=0) %>%
+    group_by(ParticipantIdentifier) %>% 
+    distinct(Date, .keep_all = T) %>% 
+    summarise(days_present_nonzero = n()) %>% 
+    ungroup() %>% 
+    mutate(log10_days_present_nonzero = log10(days_present_nonzero))
+}
+
+# days_present_qaqc_bounded_per_participant <- function(df, measure) {
+#   df %>% 
+#     select(ParticipantIdentifier, Date, measure) %>% 
+#     mutate(Date = as_date(Date)) %>% 
+#     drop_na(measure) %>% 
+#     mutate(measure = ifelse(test = measure >= subset(bounds$lower, bounds$vars==measure) &
+#                               measure <= subset(bounds$upper, bounds$vars==measure),
+#                             yes = measure,
+#                             no = NA)) %>%
+#     group_by(ParticipantIdentifier) %>% 
+#     distinct(Date, .keep_all = T) %>% 
+#     summarise(days_present_nonzero = n()) %>% 
+#     ungroup() %>% 
+#     mutate(log10_days_present_nonzero = log10(days_present_nonzero))
+# }
+
+avg_days_present_nonzero <- function(df, col) {
+  mean(df[[col]])
+}
+
+```
+
+```{r access data, include=FALSE, message=FALSE, warning=FALSE}
+
+synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
+
+sts_token <- 
+  synapser::synGetStsStorageToken(
+    entity = 'syn52506069',
+    permission = 'read_only',
+    output_format = 'json')
+
+s3 <- 
+  arrow::S3FileSystem$create(
+    access_key = sts_token$accessKeyId,
+    secret_key = sts_token$secretAccessKey,
+    session_token = sts_token$sessionToken,
+    region="us-east-1")
+
+bucket_path <- paste0(sts_token$bucket, '/', 
+                      sts_token$baseKey, '/', 
+                      ARCHIVE_VERSION, '/')
+
+dataset_list <- 
+  s3$GetFileInfo(
+    arrow::FileSelector$create(
+      bucket_path, 
+      recursive=F))
+
+dataset_paths <- character()
+for (dataset in dataset_list) {
+  dataset_paths <- c(dataset_paths, dataset$path)
+}
+
+```
+
+# Data Pre-Processing
+
+```{r collect/create base datasets, include=FALSE}
+
+bounds <- 
+  data.frame(vars = c("HeartRateIntradayMinuteCount", "Steps", "SpO2_Avg", "Hrv_DailyRmssd"),
+             lower = c(0, 0, 50, 3),
+             upper = c(1440, 200000, 100, 210))
+
+fitbitdailydata <- 
+  arrow::open_dataset(
+    s3$path(
+      dataset_paths[grep(".*dataset_fitbitdailydata$", dataset_paths)])) %>% 
+  select(all_of(c("ParticipantIdentifier", 
+                  "Date", 
+                  "cohort", 
+                  "HeartRateIntradayMinuteCount", 
+                  "Steps", 
+                  "SpO2_Avg", 
+                  "Hrv_DailyRmssd"))) %>% 
+  mutate(
+    HeartRateIntradayMinuteCount = as.numeric(HeartRateIntradayMinuteCount),
+    Steps = as.numeric(Steps),
+    SpO2_Avg = as.numeric(SpO2_Avg),
+    Hrv_DailyRmssd = as.numeric(Hrv_DailyRmssd)) %>% 
+  rename(
+    spo2_avg = SpO2_Avg,
+    hrv = Hrv_DailyRmssd) %>% 
+  collect() %>% 
+  mutate(Date = as_date(Date))
+
+enrolledparticipants <- 
+  arrow::open_dataset(
+    s3$path(
+      dataset_paths[grep(".*dataset_enrolledparticipants$", dataset_paths)])) %>% 
+  select(ParticipantIdentifier, CustomFields_DevicesConnectedDate) %>% 
+  collect()
+
+```
+
+**Raw data**
+
+```{r data preprocessing}
+
+data.frame(n_participants = 
+             fitbitdailydata %>% 
+             select(ParticipantIdentifier) %>% 
+             n_distinct(),
+           n_records = 
+             fitbitdailydata %>% 
+             n_distinct()) %>% 
+  knitr::kable(format = "markdown", format.args = list(digits = 3, big.mark = ","))
+
+```
+
+**Transformation 1**: If `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)`, set Steps and HRIMC to 0
+
+<!-- The counts below are after excluding participants/records where `(Steps = 0) and (HRIMC = 0 or HRIMC = NA)` for a given record. -->
+
+```{r steps_hrimc_filtered data, include=FALSE}
+fitbitdailydata_steps_hrimc_filter <- 
+  fitbitdailydata %>% 
+  mutate(Steps = ifelse(test = (Steps==0 &
+                                  (HeartRateIntradayMinuteCount==0 |
+                                     is.na(HeartRateIntradayMinuteCount))),
+                        yes = 0,
+                        no = Steps),
+         HeartRateIntradayMinuteCount = ifelse(test = (Steps==0 &
+                                                         (HeartRateIntradayMinuteCount==0 |
+                                                            is.na(HeartRateIntradayMinuteCount))),
+                                               yes = 0,
+                                               no = HeartRateIntradayMinuteCount))
+  # filter(
+  #   (!(Steps==0 & (HeartRateIntradayMinuteCount==0 | is.na(HeartRateIntradayMinuteCount)))) %>% 
+  #     tidyr::replace_na(TRUE)
+  #   )
+
+data.frame(n_participants = 
+             fitbitdailydata_steps_hrimc_filter %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             select(ParticipantIdentifier) %>% 
+             n_distinct(),
+           n_records = 
+             fitbitdailydata_steps_hrimc_filter %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             n_distinct()) %>% 
+  knitr::kable(format = "markdown", format.args = list(digits = 3, big.mark = ","))
+
+```
+
+**Transformation 2**: Replace records whose values are outside a pre-specified range with `NA`
+
+```{r qa/qc range filtering, include=FALSE}
+
+fitbitdailydata_steps_hrimc_and_qaqc_transform <- 
+  fitbitdailydata_steps_hrimc_filter %>% 
+  mutate(HeartRateIntradayMinuteCount = 
+           ifelse(test = 
+                    HeartRateIntradayMinuteCount >= subset(bounds$lower, bounds$vars=="HeartRateIntradayMinuteCount") &
+                    HeartRateIntradayMinuteCount <= subset(bounds$upper, bounds$vars=="HeartRateIntradayMinuteCount"),
+                  yes = HeartRateIntradayMinuteCount,
+                  no = NA), 
+          Steps = ifelse(test = 
+                           Steps >= subset(bounds$lower, bounds$vars=="Steps") &
+                           Steps <= subset(bounds$upper, bounds$vars=="Steps"),
+                  yes = Steps,
+                  no = NA), 
+          spo2_avg = ifelse(test = 
+                              spo2_avg >= subset(bounds$lower, bounds$vars=="SpO2_Avg") &
+                              spo2_avg <= subset(bounds$upper, bounds$vars=="SpO2_Avg"),
+                  yes = spo2_avg,
+                  no = NA), 
+          hrv = ifelse(test = 
+                         hrv >= subset(bounds$lower, bounds$vars=="Hrv_DailyRmssd") &
+                         hrv <= subset(bounds$upper, bounds$vars=="Hrv_DailyRmssd"),
+                  yes = hrv,
+                  no = NA))
+
+data.frame(n_participants = 
+             fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             select(ParticipantIdentifier) %>% 
+             n_distinct(),
+           n_records = 
+             fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+             filter(Steps>0 & HeartRateIntradayMinuteCount>0) %>% 
+             n_distinct()) %>% 
+  knitr::kable(format = "markdown", format.args = list(digits = 3, big.mark = ","))
+
+```
+
+# Engagement Metrics
+
+The data resulting from applying the transformations above is used to generate the visualizations and metrics that follow.
+
+## HeartRateIntradayMinuteCount
+
+<!-- <details> -->
+
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
+
+```{r heart rate calculations, include=FALSE}
+
+days_present_nonzero_per_participant_hr_df <- 
+  days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount")
+
+kd <-
+  hist(
+    days_present_nonzero_per_participant_hr_df$days_present_nonzero,
+    # breaks = seq(0, 600, by = 50),
+    labels = TRUE,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data: Heart Rate"
+  )
+# axis(1, at = seq(0, 600, by = 100))
+
+```
+
+<!-- </details> -->
+
+<details open>
+
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+
+```{r heart rate calculations 2}
+
+wear_time_devices_connected_date_df_hr <- 
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, HeartRateIntradayMinuteCount), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  drop_na() %>%
+  filter(HeartRateIntradayMinuteCount!=0)
+
+tmpdf <- 
+  wear_time_devices_connected_date_df_hr %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_contributed = n()) %>% 
+  select(-c(Date, HeartRateIntradayMinuteCount)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days of Non-Zero Data Contributed",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data Contributed Since DevicesConnectedDate: Heart Rate"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
+```
+
+</details>
+
+<details open>
+
+<summary>Click to Expand: Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate</summary>
+
+```{r heart rate calculations 3}
+
+avg_total_wear_time_since_devices_connected_date_per_participant <- 
+  wear_time_devices_connected_date_df_hr %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date>=DevicesConnectedDate) %>% 
+  mutate(days_contributed = n()) %>% 
+  summarise(
+    avg_wear_time_mins = round(sum(HeartRateIntradayMinuteCount)/as.numeric(first(days_contributed)), 3), 
+    avg_wear_time_percent = round((sum(HeartRateIntradayMinuteCount)/as.numeric(first(days_contributed)))/1440, 3))
+
+kd2 <- density(avg_total_wear_time_since_devices_connected_date_per_participant$avg_wear_time_percent, bw = "SJ")
+plot(kd2, main = "Average Proportion of Non-Zero Total Wear Time Since DevicesConnectedDate: HeartRate")
+polygon(kd2, col='lightblue', border='black')
+
+proportion_days_since_devices_connected_date_per_participant_hr <-
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, HeartRateIntradayMinuteCount), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_in_study = as.numeric(last(Date) - DevicesConnectedDate + 1)) %>% 
+  select(-c(Date, HeartRateIntradayMinuteCount)) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  right_join(y = tmpdf, by = c("ParticipantIdentifier", "DevicesConnectedDate")) %>% 
+  mutate(adherence_proportion = days_contributed/days_in_study)
+
+insights_hr <- 
+  data.frame(
+    "device" = "fitbit",
+    "category" = "heartrate",
+    "measure" = "HeartRateIntradayMinuteCount",
+    "n_records" = num_records_total(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount"),
+    "n_complete" = num_records_complete(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount"),
+    "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount"),
+    "n_participants_with_complete_records" = num_participants_with_records(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount"),
+    "n_participants_with_complete_nonzero_records" = num_participants_with_records_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "HeartRateIntradayMinuteCount"),
+    "avg_n_days_of_complete_nonzero_data" = avg_days_present_nonzero(days_present_nonzero_per_participant_hr_df, "days_present_nonzero"),
+    "avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(tmpdf$days_contributed),
+    "proportion_avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(proportion_days_since_devices_connected_date_per_participant_hr$adherence_proportion),
+    "avg_total_wear_time_since_devices_connected_date_all_participants" = mean(avg_total_wear_time_since_devices_connected_date_per_participant$avg_wear_time_mins),
+    "proportion_avg_total_wear_time_since_devices_connected_date_all_participants" = mean(avg_total_wear_time_since_devices_connected_date_per_participant$avg_wear_time_percent)
+    )
+
+```
+
+</details>
+
+## Steps
+
+<!-- <details> -->
+
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
+
+```{r activity steps calculations, include=FALSE}
+
+days_present_nonzero_per_participant_steps_df <- 
+  days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps")
+
+kd3 <- 
+  hist(
+    days_present_nonzero_per_participant_steps_df$days_present_nonzero, 
+    breaks = seq(0, 2000, by = 100),
+    labels = T,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data: Steps"
+  )
+axis(1, at = seq(0, 2000, by = 100))
+
+```
+
+<!-- </details> -->
+
+<details open>
+
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+```{r activity steps calculations 2}
+
+days_devices_connected_date_df_steps <- 
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, Steps), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  drop_na() %>% 
+  filter(Steps!=0)
+
+tmpdf <- 
+  days_devices_connected_date_df_steps %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_contributed = n()) %>% 
+  select(-c(Date, Steps)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd3.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days of Non-Zero Data Contributed",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data Contributed Since DevicesConnectedDate: Steps"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
+```
+
+</details>
+
+<details open>
+
+<summary>Click to Expand: Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+
+```{r activity steps calculations 3}
+
+proportion_days_since_devices_connected_date_per_participant_steps <-
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, Steps), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_in_study = as.numeric(last(Date) - DevicesConnectedDate + 1)) %>% 
+  select(-c(Date, Steps)) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  right_join(y = tmpdf, by = c("ParticipantIdentifier", "DevicesConnectedDate")) %>% 
+  mutate(adherence_proportion = days_contributed/days_in_study)
+
+kd4 <- density(proportion_days_since_devices_connected_date_per_participant_steps$adherence_proportion, bw = "ucv")
+plot(kd4, main = "Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant: Steps")
+polygon(kd4, col='lightblue', border='black')
+
+insights_steps <- 
+  data.frame(
+    "device" = "fitbit",
+    "category" = "steps",
+    "measure" = "Steps",
+    "n_records" = num_records_total(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps"),
+    "n_complete" = num_records_complete(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps"),
+    "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps"),
+    "n_participants_with_complete_records" = num_participants_with_records(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps"),
+    "n_participants_with_complete_nonzero_records" = num_participants_with_records_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "Steps"),
+    "avg_n_days_of_complete_nonzero_data" = avg_days_present_nonzero(days_present_nonzero_per_participant_steps_df, "days_present_nonzero"),
+    "avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(tmpdf$days_contributed),
+    "proportion_avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(proportion_days_since_devices_connected_date_per_participant_steps$adherence_proportion)
+  )
+
+```
+
+</details>
+
+## SpO2
+
+<!-- <details> -->
+
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
+
+```{r spo2 calculations, include=FALSE}
+
+days_present_nonzero_per_participant_spo2_df <- 
+  days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg")
+
+kd5 <- 
+  hist(
+    days_present_nonzero_per_participant_spo2_df$days_present_nonzero, 
+    # breaks = seq(0, 600, by = 50),
+    labels = T,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data: SpO2"
+  )
+# axis(1, at = seq(0, 600, by = 100))
+
+```
+
+<!-- </details> -->
+
+<details open>
+
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+```{r spo2 calculations 2}
+
+days_devices_connected_date_df_spo2 <- 
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, spo2_avg), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  drop_na() %>% 
+  filter(spo2_avg!=0)
+
+tmpdf <- 
+  days_devices_connected_date_df_spo2 %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_contributed = n()) %>% 
+  select(-c(Date, spo2_avg)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd5.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days of Non-Zero Data Contributed",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data Contributed Since DevicesConnectedDate: SpO2"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
+```
+
+</details>
+
+<details open>
+
+<summary>Click to Expand: Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+
+```{r spo2 calculations 3}
+
+proportion_days_since_devices_connected_date_per_participant_spo2 <-
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, spo2_avg), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_in_study = as.numeric(last(Date) - DevicesConnectedDate + 1)) %>% 
+  select(-c(Date, spo2_avg)) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  right_join(y = tmpdf, by = c("ParticipantIdentifier", "DevicesConnectedDate")) %>% 
+  mutate(adherence_proportion = days_contributed/days_in_study)
+  
+kd6 <- density(proportion_days_since_devices_connected_date_per_participant_spo2$adherence_proportion, bw = "ucv")
+plot(kd6, main = "Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant: SpO2")
+polygon(kd6, col='lightblue', border='black')
+
+insights_spo2 <- 
+  data.frame(
+    "device" = "fitbit",
+    "category" = "spo2",
+    "measure" = "SpO2_Avg",
+    "n_records" = num_records_total(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg"),
+    "n_complete" = num_records_complete(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg"),
+    "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg"),
+    "n_participants_with_complete_records" = num_participants_with_records(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg"),
+    "n_participants_with_complete_nonzero_records" = num_participants_with_records_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "spo2_avg"),
+    "avg_n_days_of_complete_nonzero_data" = avg_days_present_nonzero(days_present_nonzero_per_participant_spo2_df, "days_present_nonzero"),
+    "avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(tmpdf$days_contributed),
+    "proportion_avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(proportion_days_since_devices_connected_date_per_participant_spo2$adherence_proportion)
+  )
+
+```
+
+</details>
+
+## HRV
+
+<!-- <details> -->
+
+<!-- <summary>Click to Expand: Number of Participants with N Days of Non-Zero Data</summary> -->
+
+```{r hrv calculations, include=FALSE}
+
+days_present_nonzero_per_participant_hrv_df <- 
+  days_present_nonzero_per_participant(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv")
+
+kd7 <- 
+  hist(
+    days_present_nonzero_per_participant_hrv_df$days_present_nonzero, 
+    breaks = seq(0, 1000, by = 50),
+    labels = T,
+    xlab = "Number of Days",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data: HRV"
+  )
+axis(1, at = seq(0, 1000, by = 100))
+
+```
+
+<!-- </details> -->
+
+<details open>
+
+<summary>Click to Expand: Number of Participants with N Days of Non-Zero Data Since DevicesConnectedDate</summary>
+
+```{r hrv calculations 2}
+
+days_devices_connected_date_df_hrv <- 
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, hrv), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  drop_na() %>% 
+  filter(hrv!=0)
+
+tmpdf <- 
+  days_devices_connected_date_df_hrv %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_contributed = n()) %>% 
+  select(-c(Date, hrv)) %>% 
+  distinct() %>% 
+  ungroup()
+
+kd7.2 <- 
+  hist(
+    tmpdf$days_contributed,
+    breaks = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 25),
+    labels = TRUE,
+    xlab = "Number of Days of Non-Zero Data Contributed",
+    ylab = "Number of Participants",
+    main = "Number of Participants with N Days of Non-Zero Data Contributed Since DevicesConnectedDate: HRV"
+  )
+axis(1, at = seq(0, (round((max(tmpdf$days_contributed)/1000), 1) * 1000 + 50), by = 50))
+
+```
+
+</details>
+
+<details open>
+
+<summary>Click to Expand: Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant</summary>
+
+```{r hrv calculations 3}
+
+proportion_days_since_devices_connected_date_per_participant_hrv <-
+  merge(x = 
+          fitbitdailydata_steps_hrimc_and_qaqc_transform %>% 
+          select(ParticipantIdentifier, Date, hrv), 
+        y = 
+          enrolledparticipants %>% 
+          select(ParticipantIdentifier, CustomFields_DevicesConnectedDate)) %>% 
+  rename(DevicesConnectedDate = CustomFields_DevicesConnectedDate) %>% 
+  mutate(Date = as_date(Date),
+         DevicesConnectedDate = as_date(DevicesConnectedDate)) %>% 
+  group_by(ParticipantIdentifier) %>% 
+  arrange(Date, .by_group = TRUE) %>% 
+  filter(Date >= DevicesConnectedDate) %>% 
+  mutate(days_in_study = as.numeric(last(Date) - DevicesConnectedDate + 1)) %>% 
+  select(-c(Date, hrv)) %>% 
+  distinct() %>% 
+  ungroup() %>% 
+  right_join(y = tmpdf, by = c("ParticipantIdentifier", "DevicesConnectedDate")) %>% 
+  mutate(adherence_proportion = days_contributed/days_in_study)
+
+kd8 <- density(proportion_days_since_devices_connected_date_per_participant_hrv$adherence_proportion, bw = "ucv")
+plot(kd8, main = "Proportion of Number of Days of Non-Zero Data Since DevicesConnectedDate per Participant: HRV")
+polygon(kd8, col='lightblue', border='black')
+
+insights_hrv <- 
+  data.frame(
+    "device" = "fitbit",
+    "category" = "hrv",
+    "measure" = "Hrv_DailyRmssd",
+    "n_records" = num_records_total(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv"),
+    "n_complete" = num_records_complete(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv"),
+    "n_complete_nonzero" = num_records_complete_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv"),
+    "n_participants_with_complete_records" = num_participants_with_records(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv"),
+    "n_participants_with_complete_nonzero_records" = num_participants_with_records_nonzero(fitbitdailydata_steps_hrimc_and_qaqc_transform, "hrv"),
+    "avg_n_days_of_complete_nonzero_data" = avg_days_present_nonzero(days_present_nonzero_per_participant_hrv_df, "days_present_nonzero"),
+    "avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(tmpdf$days_contributed),
+    "proportion_avg_n_days_contributed_since_devices_connected_date_all_participants" = mean(proportion_days_since_devices_connected_date_per_participant_hrv$adherence_proportion)
+  )
+
+```
+
+</details>
+
+## Summary
+
+```{r bind all calculations dfs}
+
+insights <- bind_rows(insights_hr, insights_steps, insights_spo2, insights_hrv)
+
+fitbit_dailydata_metrics <- 
+  data.frame(type = insights$category, 
+             n_participants = insights$n_participants_with_complete_nonzero_records,
+             n_records = insights$n_complete_nonzero, 
+             avg_days = round(insights$avg_n_days_of_complete_nonzero_data, 1), 
+             avg_days_since_connected = round(insights$avg_n_days_contributed_since_devices_connected_date_all_participants, 1),
+             prop_avg_days_since_connected = round(insights$proportion_avg_n_days_contributed_since_devices_connected_date_all_participants, 3))
+
+write.csv(insights, 
+          paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/insights.csv"), 
+          row.names = F)
+
+write.csv(fitbit_dailydata_metrics, 
+          paste0("dashboards/fitbit-dailydata-metrics/rendered-dfs/", ARCHIVE_VERSION, "/fitbit_dailydata_metrics.csv"),
+          row.names = F)
+
+```
+
+### At a Glance
+
+<details open>
+
+<summary>Click to Expand</summary>
+
+```{r At a glance, echo=FALSE}
+
+fitbit_dailydata_metrics %>% 
+  knitr::kable(format = "markdown", 
+               format.args = list(big.mark = ","))
+
+```
+
+**Note:**
+- `n_participants` = Number of unique participants with complete non-zero records
+- `n_records` = Number of complete non-zero records
+- `avg_days` = Average number of days of complete non-zero data
+- `avg_days_since_connected` = Average number of days of complete non-zero data since `DevicesConnectedDate` across all participants (number of days where data was contributed)
+- `prop_avg_days_since_connected` = Proportion of average number of days of complete non-zero data since `DevicesConnectedDate` across all participants (number of days where data was contributed divided by number of days in study)
+
+</details>
+
+### Number of Records
+
+<details>
+
+<summary>Click to Expand</summary>
+
+```{r insights table num records, echo=FALSE}
+
+insights %>% 
+  select(all_of(c("category", 
+                  "measure", 
+                  # "n_records", 
+                  "n_complete", 
+                  "n_complete_nonzero"))) %>% 
+  knitr::kable(format = "markdown",
+               format.args = list(big.mark = ",",
+                                  scientific = F))
+
+```
+
+**Note:**
+<!-- - `n_records` = Number of records -->
+- `n_complete` = Number of complete records
+- `n_complete_nonzero` = Number of complete non-zero records
+
+</details>
+
+### Number of Participants
+
+<details>
+
+<summary>Click to Expand</summary>
+
+```{r insights table num participants, echo=FALSE}
+
+insights %>% 
+  select(all_of(c("category", 
+                  "measure", 
+                  "n_participants_with_complete_records", 
+                  "n_participants_with_complete_nonzero_records"))) %>% 
+  rename(n_participants = n_participants_with_complete_records,
+         n_participants_complete_nonzero = n_participants_with_complete_nonzero_records) %>% 
+  knitr::kable(format = "markdown")
+
+```
+
+**Note:**
+- `n_participants` = Number of unique participants with complete records
+- `n_participants_complete_nonzero` = Number of unique participants with complete non-zero records
+
+</details>
+
+### Number of Days of Data
+
+<details>
+
+<summary>Click to Expand</summary>
+
+```{r insights table num days of data, echo=FALSE}
+
+insights %>% 
+  select(all_of(c("category", 
+                  "measure", 
+                  "avg_n_days_of_complete_nonzero_data", 
+                  "avg_n_days_contributed_since_devices_connected_date_all_participants",
+                  "proportion_avg_n_days_contributed_since_devices_connected_date_all_participants"))) %>% 
+  rename(avg_days = avg_n_days_of_complete_nonzero_data,
+         avg_days_since_connected = avg_n_days_contributed_since_devices_connected_date_all_participants,
+         prop_avg_days_since_connected = proportion_avg_n_days_contributed_since_devices_connected_date_all_participants) %>% 
+  knitr::kable(format = "markdown", 
+               format.args = list(digits = 3))
+
+```
+
+**Note:** 
+- `avg_days` = Average number of days of complete non-zero data
+- `avg_days_since_connected` = Average number of days of complete non-zero data since `DevicesConnectedDate` across all participants (number of days where data was contributed)
+- `prop_avg_days_since_connected` = Proportion of average number of days of complete non-zero data since `DevicesConnectedDate` across all participants (number of days where data was contributed divided by number of days in study)
+
+
+</details>
+
+### Average Device Wear Time
+
+<details>
+
+<summary>Click to Expand</summary>
+
+```{r insights table avg wear time, echo=FALSE}
+
+insights %>% 
+  select(all_of(c("category", 
+                  "measure", 
+                  "avg_total_wear_time_since_devices_connected_date_all_participants", 
+                  "proportion_avg_total_wear_time_since_devices_connected_date_all_participants"))) %>% 
+  filter(measure == "HeartRateIntradayMinuteCount") %>% 
+  rename(avg_total_wear_time = avg_total_wear_time_since_devices_connected_date_all_participants,
+         prop_avg_total_wear_time = proportion_avg_total_wear_time_since_devices_connected_date_all_participants) %>% 
+  knitr::kable(format = "markdown",
+               format.args = list(digits = 3))
+
+```
+
+**Note:**
+- `avg_total_wear_time` = Average total wear time (minutes) since `DevicesConnectedDate` across all participants
+- `prop_avg_total_wear_time` = Proportion of average total wear time since `DevicesConnectedDate` across all participants (avg wear time divided 1440 minutes)
+
+</details>
+
+## Code used 
+
+```{r provenance, echo=FALSE, results='asis'}
+
+this_file_path <- "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd"
+
+latest_file_commit <- 
+  gh::gh("/repos/:owner/:repo/commits", 
+         owner = "Sage-Bionetworks", 
+         repo = "RECOVER-MHDR-Analysis", 
+         path = this_file_path, 
+         .token = readLines("~/git_token.txt"))[[1]]$commit$url %>% 
+  {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+
+cat("[Link to GitHub repo](", latest_file_commit, ")")
+
+```
