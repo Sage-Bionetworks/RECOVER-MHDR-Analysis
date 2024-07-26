@@ -162,7 +162,7 @@ this_file_path <- "dashboards/wearables-summaries/wearables_summary_stats.Rmd"
 
 latest_file_commit <- 
   gh::gh("/repos/:owner/:repo/commits", 
-         owner = "pranavanba", 
+         owner = "Sage-Bionetworks", 
          repo = "RECOVER-MHDR-Analysis", 
          path = this_file_path)[[1]]$commit$url %>% 
   {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
