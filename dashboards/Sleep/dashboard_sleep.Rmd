@@ -17,10 +17,10 @@ synapser::synLogin()
 ######### change knit2synapse to Jake's version
 
 #### ARCHIVE VERSION
-ARCHIVE_VERSION <- '2023-09-21'  ## UPDATE archive version here
+ARCHIVE_VERSION <- '2024-06-13'  ## UPDATE archive version here
 
 #### GitHub Token
-gtToken = "<YOUR GITHUB PERSONAL TOKEN>"
+# gtToken = "<YOUR GITHUB PERSONAL TOKEN>"
 
 ## New lines for calling synapseclient
 synapseclient <- reticulate::import("synapseclient")
@@ -34,9 +34,14 @@ syn_temp$login() # is fails use syn_temp$login(authToken = <yourPAT>)
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-knit2synapse:::createAndKnitToFolderEntityClient(file = "dashboard_sleep.Rmd",
-                                          parentId = "syn53128270",
-                                          folderName = 'Sleep')
+# knit2synapse:::createAndKnitToFolderEntityClient(file = "dashboard_sleep.Rmd",
+#                                                  parentId = "syn61348473",
+#                                                  folderName = 'Sleep')
+knit2synapse::knitfile2synapse(file = "dashboard_sleep.Rmd",
+                               owner = "syn51105296",
+                               parentWikiId = '627716',
+                               wikiName = 'Sleep',
+                               overwrite = TRUE)
 ```
 
 ```{r required libraries, include=FALSE, warning=FALSE, echo=FALSE, message=FALSE}
@@ -75,6 +80,7 @@ summarizeData <- function(pDat){
 ## Get Sleep data
 ############################
 ## Set up Token access
+synapser::synLogin()
 sts_token <- synapser::synGetStsStorageToken(entity = 'syn52506069', # sts enabled destination folder
                                              permission = 'read_only',   # request a read only token
                                              output_format = 'json')
@@ -109,12 +115,11 @@ valid_paths_ext_df <- valid_paths %>%
   dplyr::ungroup()
 
 #### Get the sleep data in
-dataset_path <- valid_paths[[9]]
+dataset_path <- valid_paths[grepl('fitbitsleeplogs',valid_paths)][1]
 fitbit_sleeplogs <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) %>% dplyr::collect()
 
-dataset_path <- valid_paths[[1]]
+dataset_path <- valid_paths[grepl('enrolled',valid_paths)][1]
 enrolledparticipants <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) %>% dplyr::collect()
-
 ```
 
 
@@ -128,12 +133,12 @@ enrolledparticipants <-  arrow::open_dataset(s3_external$path(as.character(datas
 #   2. Number of Sleep participants
 #   3. Number of Sleep days
 #   4. Average Number of Sleep days per participant
-#   5. Proportion of Sleep days since enrollment
+#   5. Percentage of Sleep days since enrollment
 ## (Sleep - Stages)
 #   6. Number of Sleep Stages participants
 #   7. Number of Sleep Stages days
 #   8. Average Number of Sleep Stages days per participant
-#   9. Proportion of Sleep Stages days since enrollment
+#   9. Percentage of Sleep Stages days since enrollment
 ##############
 ```
 
@@ -142,9 +147,10 @@ enrolledparticipants <-  arrow::open_dataset(s3_external$path(as.character(datas
 ```{r Number of records, echo=FALSE, warning=FALSE, message=FALSE}
 # 1 
 number_of_records <- fitbit_sleeplogs %>% 
-  dplyr::group_by(Type) %>% 
+  dplyr::group_by(Type,IsMainSleep) %>% 
   dplyr::count() %>% 
   dplyr::full_join(data.frame(Type = 'Total',
+                              IsMainSleep = '--',
                               n = nrow(fitbit_sleeplogs)))
 
 kable(number_of_records)
@@ -180,6 +186,38 @@ number_of_sleep_participants <- number_of_sleep_participants %>%
 kable(number_of_sleep_participants)
 ```
 
+### Number of participants (IsMainSleep = TRUE)
+```{r Number of participants ismainsleep, echo=FALSE, warning=FALSE, message=FALSE}
+# 2 and 6
+number_of_sleep_participants <- fitbit_sleeplogs %>% 
+  dplyr::filter(IsMainSleep == 'True') %>% ######## Filter IsMainSleep = TRUE
+  dplyr::select(ParticipantIdentifier, Type) %>% 
+  unique() %>% 
+  dplyr::left_join(fitbit_sleeplogs %>% 
+                     dplyr::select(ParticipantIdentifier, Type) %>% 
+                     unique() %>% 
+                     dplyr::group_by(ParticipantIdentifier) %>%
+                     dplyr::count() %>% 
+                     dplyr::ungroup()
+  ) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(newType = ifelse(n==2,'classic and stages',Type)) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::select(-Type) %>% 
+  unique() %>% 
+  dplyr::group_by(newType) %>% 
+  dplyr::count() %>% 
+  dplyr::ungroup()
+
+number_of_sleep_participants <- rbind(number_of_sleep_participants, data.frame('newType' = 'Total', 'n' = sum(number_of_sleep_participants$n)))
+
+number_of_sleep_participants <- number_of_sleep_participants %>% 
+  dplyr::rename(type = newType)
+
+kable(number_of_sleep_participants)
+```
+
+
 ### Number of Sleep days
 
 Assuming that a record that is atleast 3 hrs long to be considered a sleep record. A day with atleast one sleep record is considered a sleep day
@@ -213,6 +251,41 @@ ggplot2::ggplot(data = number_of_sleep_days, aes(x = n))+ geom_histogram() + xla
 
 ```
 
+### Number of Sleep days (IsMainSleep = TRUE)
+
+Assuming that a record that is atleast 3 hrs long to be considered a sleep record. A day with atleast one sleep record is considered a sleep day
+```{r Number of Sleep days ismainsleep, echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
+# 3 and 7 (consider atleast 3 hrs for a sleep day)
+number_of_sleep_days <- fitbit_sleeplogs %>% 
+  dplyr::filter(IsMainSleep == 'True') %>% ######## Filter IsMainSleep = TRUE
+  dplyr::select(ParticipantIdentifier, StartDate, EndDate, Duration, Type) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(dayOfRecording= as.Date(StartDate),
+                Duration = as.numeric(Duration)) %>% 
+  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::ungroup() %>% 
+  dplyr::select(ParticipantIdentifier, dayOfRecording, Type) %>%
+  unique() 
+
+number_of_sleep_days <- number_of_sleep_days %>% 
+  dplyr::left_join(number_of_sleep_days %>% 
+                     dplyr::group_by(ParticipantIdentifier, dayOfRecording) %>% 
+                     count()) %>% 
+  dplyr::mutate(newType = ifelse(n==2, 'classic and stages', Type)) %>% 
+  dplyr::select(-Type) %>% 
+  unique() %>% 
+  dplyr::group_by(ParticipantIdentifier, newType) %>% 
+  count() %>% 
+  dplyr::rename(Type = newType) %>% 
+  dplyr::ungroup()
+
+options(repr.plot.width = 9, repr.plot.height =6)
+ggplot2::ggplot(data = number_of_sleep_days, aes(x = n))+ geom_histogram() + xlab('Number of days with atleast one 3 hr record (log scale)') + ylab('Number of records') +
+  theme_minimal() + facet_wrap(~Type) + scale_x_log10()
+
+```
+
+
 ### Average number of sleep days
 A day might have both classic and stages Type sleep records for a given participant. We are counting both in the averages below
 
@@ -237,9 +310,34 @@ avg_number_of_sleep_days <- fitbit_sleeplogs %>%
 kable(avg_number_of_sleep_days)
 ```
 
+### Average number of sleep days (IsMainSleep = TRUE)
+A day might have both classic and stages Type sleep records for a given participant. We are counting both in the averages below
 
-### Proportion of sleep days since enrollment
-```{r Proportion of sleep days since enrollment,  echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
+```{r Avg number of sleep days ismainsleep, echo=FALSE, warning=FALSE, message=FALSE}
+# 4 and 8
+avg_number_of_sleep_days <- fitbit_sleeplogs %>% 
+  dplyr::filter(IsMainSleep == 'True') %>% ######## Filter IsMainSleep = TRUE
+  dplyr::select(ParticipantIdentifier, StartDate, EndDate, Duration, Type) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(dayOfRecording= as.Date(StartDate),
+                Duration = as.numeric(Duration)) %>% 
+  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::ungroup() %>% 
+  dplyr::select(ParticipantIdentifier, dayOfRecording, Type) %>%
+  unique() %>% 
+  dplyr::group_by(ParticipantIdentifier, Type) %>% 
+  dplyr::count() %>% 
+  dplyr::ungroup() %>% 
+  dplyr::group_by(Type) %>% 
+  dplyr::summarise(mean = mean(n),
+                   median = median(n))
+
+kable(avg_number_of_sleep_days)
+```
+
+
+### Percentage of sleep days since enrollment
+```{r percentage of sleep days since enrollment,  echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
 # 5 (Propotion of sleep days since enrollment)
 sleep_days_since_enrollment <- fitbit_sleeplogs %>% 
   dplyr::left_join(enrolledparticipants %>% 
@@ -259,20 +357,19 @@ sleep_days_since_enrollment <- fitbit_sleeplogs %>%
   dplyr::ungroup() %>% 
   dplyr::rename(ndays_after_enrollment = n) %>% 
   dplyr::rowwise() %>% 
-  dplyr::mutate(proportion_sleep_days_post_enroll = 100*ndays_after_enrollment/lubridate::day(days_enrolled)) %>% 
+  dplyr::mutate(percentage_sleep_days_post_enroll = 100*ndays_after_enrollment/lubridate::day(days_enrolled)) %>% 
   dplyr::ungroup()
 
 options(repr.plot.width = 8, repr.plot.height =6)
-ggplot2::ggplot(data = sleep_days_since_enrollment, aes(x = proportion_sleep_days_post_enroll))+ geom_histogram() + xlab('Proportion of Sleep days Since enrollment') + ylab('Number of records') + facet_wrap(~Type)+
+ggplot2::ggplot(data = sleep_days_since_enrollment, aes(x = percentage_sleep_days_post_enroll))+ geom_histogram() + xlab('Percentage of Sleep days Since enrollment') + ylab('Number of records') + facet_wrap(~Type)+
   theme_minimal()
 
-mean_proportion_sleep_days_since_enrollment <- sleep_days_since_enrollment %>% 
+mean_percentage_sleep_days_since_enrollment <- sleep_days_since_enrollment %>% 
   dplyr::group_by(Type) %>% 
-    dplyr::summarise(mean = mean(proportion_sleep_days_post_enroll),
-                   median = median(proportion_sleep_days_post_enroll))
-kable(mean_proportion_sleep_days_since_enrollment)
+  dplyr::summarise(mean = mean(percentage_sleep_days_post_enroll),
+                   median = median(percentage_sleep_days_post_enroll))
+kable(mean_percentage_sleep_days_since_enrollment)
 ```
-
 
 ### Average number of sleep days after enrollment
 A day might have both classic and stages Type sleep records for a given participant. We are counting both in the averages below
@@ -288,6 +385,56 @@ kable(avg_number_of_sleep_days_enrollment)
 ```
 
 
+### Percentage of sleep days since enrollment (IsMainSleep = TRUE)
+```{r percentage of sleep days since enrollment ismainsleep,  echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
+# 5 (Propotion of sleep days since enrollment)
+sleep_days_since_enrollment <- fitbit_sleeplogs %>% 
+  dplyr::filter(IsMainSleep == 'True') %>% 
+  dplyr::left_join(enrolledparticipants %>% 
+                     dplyr::select(ParticipantIdentifier, EnrollmentDate) %>% 
+                     dplyr::mutate(days_enrolled = lubridate::days(Sys.Date() - as.Date(EnrollmentDate)))) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::filter(StartDate >= EnrollmentDate) %>%  # records after enrollment
+  dplyr::rowwise() %>% 
+  dplyr::mutate(dayOfRecording= as.Date(StartDate),
+                Duration = as.numeric(Duration)) %>% 
+  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::ungroup() %>% 
+  dplyr::select(ParticipantIdentifier, dayOfRecording, days_enrolled, Type) %>%
+  unique() %>% 
+  dplyr::group_by(ParticipantIdentifier, days_enrolled, Type) %>% 
+  count() %>%
+  dplyr::ungroup() %>% 
+  dplyr::rename(ndays_after_enrollment = n) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(percentage_sleep_days_post_enroll = 100*ndays_after_enrollment/lubridate::day(days_enrolled)) %>% 
+  dplyr::ungroup()
+
+options(repr.plot.width = 8, repr.plot.height =6)
+ggplot2::ggplot(data = sleep_days_since_enrollment, aes(x = percentage_sleep_days_post_enroll))+ geom_histogram() + xlab('Percentage of Sleep days Since enrollment') + ylab('Number of records') + facet_wrap(~Type)+
+  theme_minimal()
+
+mean_percentage_sleep_days_since_enrollment <- sleep_days_since_enrollment %>% 
+  dplyr::group_by(Type) %>% 
+  dplyr::summarise(mean = mean(percentage_sleep_days_post_enroll),
+                   median = median(percentage_sleep_days_post_enroll))
+kable(mean_percentage_sleep_days_since_enrollment)
+```
+
+
+### Average number of sleep days after enrollment (IsMainSleep = TRUE)
+A day might have both classic and stages Type sleep records for a given participant. We are counting both in the averages below
+
+```{r Avg number of sleep days after enrollment ismainsleep, echo=FALSE, warning=FALSE, message=FALSE}
+# 4 and 8
+avg_number_of_sleep_days_enrollment <- sleep_days_since_enrollment %>% 
+  dplyr::group_by(Type) %>% 
+  dplyr::summarise(mean = mean(ndays_after_enrollment),
+                   median = median(ndays_after_enrollment))
+
+kable(avg_number_of_sleep_days_enrollment)
+```
+
 ```{r Summarize data for analysis and plots,  echo=FALSE, warning=FALSE, message=FALSE}
 ############
 ## Summary of data
@@ -300,41 +447,55 @@ sleep_summary <- fitbit_sleeplogs %>%
   dplyr::ungroup() %>% 
   dplyr::mutate(dataset = 'fitbitsleeplogs')
 
+####### SLEEP(IsMainSleep)
+sleep_summary_ismainsleep <- fitbit_sleeplogs %>% 
+  dplyr::filter(IsMainSleep == 'True') %>% ######## Filter IsMainSleep = TRUE
+  dplyr::select(ParticipantIdentifier, StartDate, EndDate) %>% 
+  dplyr::rowwise() %>% 
+  dplyr::mutate(Date = as.Date(StartDate) %>% as.character()) %>% 
+  dplyr::ungroup() %>% 
+  dplyr::mutate(dataset = 'fitbitsleeplogs(IsMainSleep)')
 
 ####### Other Fitbit Measures
 ####### 
-dataset_path <- valid_paths[[4]]
-fitbit_data <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) %>% dplyr::collect()
+dataset_path <- valid_paths[grepl('activitylogs',valid_paths)][1]
+fitbit_data <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) 
 activitylogs_summary <- fitbit_data %>% 
   dplyr::select(ParticipantIdentifier, StartDate, EndDate) %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(Date = as.character(as.Date(StartDate))) %>% 
-  dplyr::ungroup() %>% 
-  dplyr::mutate(dataset = 'activitylogs')
+  # dplyr::rowwise() %>% 
+  # dplyr::mutate(Date = as.character(as.Date(StartDate))) %>% 
+  # dplyr::ungroup() %>% 
+  dplyr::mutate(dataset = 'activitylogs') %>%
+  dplyr::collect()
+activitylogs_summary$Date = as.character(as.Date(activitylogs_summary$StartDate))
 
-
-dataset_path <- valid_paths[[5]]
-fitbit_data <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) %>% dplyr::collect()
+dataset_path <- valid_paths[grepl('dailydata',valid_paths)][1]
+fitbit_data <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) 
 dailydata_summary <- fitbit_data %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(Date = as.character(as.Date(Date))) %>% 
-  dplyr::ungroup() %>% 
+  # dplyr::rowwise() %>% 
+  # dplyr::mutate(Date = as.character(as.Date(Date))) %>% 
+  # dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, Date) %>% 
-  dplyr::mutate(dataset = 'dailydata')
+  dplyr::mutate(dataset = 'dailydata')%>%
+  dplyr::collect()
 
+dailydata_summary$Date = as.character(as.Date(dailydata_summary$Date))
 
-dataset_path <- valid_paths[[8]]
-fitbit_data <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) %>% dplyr::collect()
+dataset_path <- valid_paths[grepl('fitbitrestingheartrates',valid_paths)][1]
+fitbit_data <-  arrow::open_dataset(s3_external$path(as.character(dataset_path))) 
 restingHR_summary <- fitbit_data %>% 
-  dplyr::rowwise() %>% 
-  dplyr::mutate(Date = as.character(as.Date(Date))) %>% 
-  dplyr::ungroup() %>% 
+  # dplyr::rowwise() %>% 
+  # dplyr::mutate(Date = as.character(as.Date(Date))) %>% 
+  # dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, Date) %>% 
-  dplyr::mutate(dataset = 'restingHR')
+  dplyr::mutate(dataset = 'restingHR')%>%
+  dplyr::collect()
 
+restingHR_summary$Date = as.character(as.Date(restingHR_summary$Date))
 
 ### merge em all
 aa <- sleep_summary %>% 
+  dplyr::full_join(sleep_summary_ismainsleep) %>% 
   dplyr::full_join(activitylogs_summary) %>% 
   dplyr::full_join(restingHR_summary) %>% 
   dplyr::full_join(dailydata_summary) %>% 
@@ -349,6 +510,7 @@ aa <- sleep_summary %>%
   dplyr::mutate(activitylogs = ifelse(grepl('activitylogs',dataset),TRUE,FALSE)) %>% 
   dplyr::mutate(restingHR = ifelse(grepl('restingHR',dataset),TRUE,FALSE)) %>% 
   dplyr::mutate(fitbitsleeplogs = ifelse(grepl('fitbitsleeplogs',dataset),TRUE,FALSE)) %>% 
+  dplyr::mutate(fitbitsleeplogs_isMainSleep = ifelse(grepl('IsMainSleep',dataset),TRUE,FALSE)) %>% 
   dplyr::mutate(otherData = ifelse(dailydata || activitylogs || restingHR, TRUE, FALSE)) %>% 
   ungroup() %>% 
   dplyr::left_join(enrolledparticipants %>% 
@@ -356,15 +518,16 @@ aa <- sleep_summary %>%
                      dplyr::mutate(days_enrolled = lubridate::days(Sys.Date() - as.Date(EnrollmentDate)))) %>% 
   dplyr::filter(Date >= EnrollmentDate)   # records after enrollment
 
-  aa$row <- rownames(aa)
+aa$row <- rownames(aa)
 
 aa3 <- aa %>% 
-  dplyr::select(row, dailydata, activitylogs, restingHR, fitbitsleeplogs, otherData) %>% 
+  dplyr::select(row, dailydata, activitylogs, restingHR, fitbitsleeplogs, fitbitsleeplogs_isMainSleep, otherData) %>% 
   dplyr::rowwise() %>% 
   dplyr::mutate(dailydata = as.integer(dailydata),
                 activitylogs = as.integer(activitylogs),
                 restingHR = as.integer(restingHR),
                 fitbitsleeplogs = as.integer(fitbitsleeplogs),
+                fitbitsleeplogs_isMainSleep = as.integer(fitbitsleeplogs_isMainSleep),
                 otherData = as.integer(otherData)) %>% 
   ungroup() 
 ```
@@ -376,28 +539,47 @@ For a given participant, we check for each day if have a record for the various 
 library(UpSetR)
 upset(as.data.frame(aa3),
       sets = c('dailydata','restingHR', 'activitylogs', 'fitbitsleeplogs'),
-      order.by = "freq")
+      order.by = "freq", text.scale = 2)
 ```
 
 ```{r sleep vs other data as a whole,  echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
 
 upset(as.data.frame(aa3),
       sets = c('otherData', 'fitbitsleeplogs'),
-      order.by = "freq")
+      order.by = "freq", text.scale = 2)
 ```
+
+### Plots of Fitbit Sleep data(IsMainSleep) vs other forms of Fitbit Data (dailydata, restingHR, activitylogs, sleeplogs)
+For a given participant, we check for each day if have a record for the various data types. Each record is a day for a participant. So the intersection size is the number of "day-participant" instances that we have data, for that specific data type. 
+
+```{r sleep vs dailydata-restingHR-activitylogs isMainSleep,  echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
+library(UpSetR)
+upset(as.data.frame(aa3),
+      sets = c('dailydata','restingHR', 'activitylogs', 'fitbitsleeplogs_isMainSleep'),
+      order.by = "freq", text.scale = 2)
+```
+
+```{r sleep vs other data as a whole isMainSleep,  echo=FALSE, warning=FALSE, message=FALSE, fig.height=8, fig.width=20}
+
+upset(as.data.frame(aa3),
+      sets = c('otherData', 'fitbitsleeplogs_isMainSleep'),
+      order.by = "freq", text.scale = 2)
+```
+
 
 ### Code used 
 ```{r get provenance, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
 ### Commenting out - doesnt work across users without 
-githubr::setGithubToken(gtToken)
-thisFileName <- "dashboards/Sleep/dashboard_sleep.Rmd" # location of file inside github repo
-thisRepo <- githubr::getRepo(repository = "itismeghasyam/RECOVER-MHDR-Analysis",
-                    ref="branch",
-                    refName="main")
-thisFile <- githubr::getPermlink(repository = thisRepo, repositoryPath=thisFileName)
+# githubr::setGithubToken(gtToken)
+# thisFileName <- "dashboards/Sleep/dashboard_sleep.Rmd" # location of file inside github repo
+# thisRepo <- githubr::getRepo(repository = "itismeghasyam/RECOVER-MHDR-Analysis",
+#                     ref="branch",
+#                     refName="main")
+# thisFile <- githubr::getPermlink(repository = thisRepo, repositoryPath=thisFileName)
 ```
 
 ```{r print provenance, echo=FALSE, results='asis'}
-http_address <- glue::glue("{thisFile}")
+# http_address <- glue::glue("{thisFile}")
+http_address <- 'https://github.com/itismeghasyam/RECOVER-MHDR-Analysis/blob/main/dashboards/Sleep/dashboard_sleep.Rmd'
 cat("[GitHub Code](", http_address, ")")
 ```
