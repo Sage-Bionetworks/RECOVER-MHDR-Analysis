@@ -601,10 +601,10 @@ nap_days_since_enrollment <-
 options(repr.plot.width = 8, repr.plot.height =6)
 ggplot2::ggplot(data = nap_days_since_enrollment, 
                 aes(x = percentage_nap_days_post_enroll)) + 
-  geom_histogram() + 
-  xlab('Percentage of Nap days Since enrollment') + 
-  ylab('Count') +
-  facet_wrap(~Type)+
+  geom_histogram(binwidth = 1) + 
+  labs(x = "Percentage of Nap Days Since Enrollment",
+       y = "Frequency")+
+  facet_wrap(~Type) +
   theme_minimal()
 
 mean_percentage_nap_days_since_enrollment <- 
@@ -628,6 +628,56 @@ avg_number_of_nap_days_enrollment <-
 kable(avg_number_of_nap_days_enrollment)
 ```
 
+### Distribution of Nap Durations Since Enrollment
+
+*Lengths of non-isMainSleep Sleep Episodes in Minutes*
+
+```{r}
+nap_durations <- 
+  fitbit_sleeplogs %>% 
+  filter(IsMainSleep=="False") %>% 
+  left_join(
+    enrolledparticipants %>% 
+      select(ParticipantIdentifier, EnrollmentDate) %>% 
+      mutate(days_enrolled = lubridate::days(Sys.Date() - as.Date(EnrollmentDate))),
+    by = join_by(ParticipantIdentifier)
+  ) %>% 
+  mutate(StartDate = as.Date(StartDate),
+         EnrollmentDate = as.Date(EnrollmentDate)) %>% 
+  filter(StartDate >= EnrollmentDate) %>% 
+  select(StartDate, Type, Duration) %>% 
+  mutate(Duration = as.numeric(Duration)/60000)
+
+options(repr.plot.width = 8, repr.plot.height =6)
+
+ggplot(nap_durations, aes(x = Duration)) +
+  geom_histogram(binwidth = 10) +
+  labs(x = "Nap Duration (minutes)", 
+       y = "Frequency") +
+  facet_wrap(~Type) +
+  theme_minimal()
+
+ggplot(nap_durations, aes(x = Type, y = Duration)) +
+  geom_violin(fill = "darkgray", alpha = 0.5, trim = TRUE) +
+  labs(x = "Type",
+       y = "Nap Duration (minutes)") +
+  theme_minimal() +
+  coord_flip() +
+  geom_boxplot(width = 0.1, outliers = TRUE, outlier.size = 0.75) +
+  scale_y_continuous(breaks = seq(0, max(nap_durations$Duration), 200))
+```
+
+### Average Nap Duration Since Enrollment
+
+```{r}
+mean_nap_duration_since_enrollment <- 
+  nap_durations %>% 
+  dplyr::group_by(Type) %>% 
+  dplyr::summarise(mean = round(mean(Duration), 1),
+                   median = round(median(Duration), 1))
+
+kable(mean_nap_duration_since_enrollment)
+```
 
 ### Code used 
 ```{r get provenance, echo=FALSE, warning=FALSE, message=FALSE, include=FALSE}
