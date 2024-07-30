@@ -643,9 +643,11 @@ nap_durations <-
     by = join_by(ParticipantIdentifier)
   ) %>% 
   mutate(StartDate = as.Date(StartDate),
-         EnrollmentDate = as.Date(EnrollmentDate)) %>% 
+         EnrollmentDate = as.Date(EnrollmentDate),
+         day = weekdays(StartDate),
+         weekday = ifelse(day=="Saturday" | day=="Sunday", "Weekend", "Weekday")) %>% 
   filter(StartDate >= EnrollmentDate) %>% 
-  select(StartDate, Type, Duration) %>% 
+  select(StartDate, weekday, Type, Duration) %>% 
   mutate(Duration = as.numeric(Duration)/60000)
 
 options(repr.plot.width = 8, repr.plot.height =6)
@@ -656,6 +658,8 @@ ggplot(nap_durations, aes(x = Duration, fill = Type)) +
        y = "Frequency") +
   scale_fill_grey() +
   scale_x_continuous(breaks = seq(0, max(nap_durations$Duration), 200)) +
+  # facet_wrap("weekday") +
+  # facet_grid(vars(Type), vars(weekday)) +
   theme_minimal()
 
 ggplot(nap_durations, aes(x = Type, y = Duration)) +
