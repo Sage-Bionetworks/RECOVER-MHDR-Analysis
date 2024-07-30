@@ -37,7 +37,6 @@ synapser::File("data_measures_df.csv",
                description = "Data measures used for summary stats", 
                parent = "syn61671543") %>% 
   synapser::synStore()
-
 ```
 
 ## Total days of wearables data
@@ -50,7 +49,7 @@ distinct_dates <-
   lapply(summary_stats, function(p) {
     lapply(p, function(c) {
       lapply(c, function(m) {
-        n_distinct(m$ParticipantIdentifier, m$date)
+        n_distinct(m$ParticipantIdentifier, m$date, na.rm = T)
       })
     })
   })
@@ -88,6 +87,63 @@ write.csv(distinct_dates_df, "distinct_dates_df.csv", row.names = F)
 
 ```{r, include=FALSE}
 synapser::File("distinct_dates_df.csv", 
+               description = "Count of unique dates of wearables data", 
+               parent = "syn61671543") %>% 
+  synapser::synStore()
+```
+
+### Pediatric Cohort
+
+```{r}
+distinct_dates_peds <- 
+  lapply(summary_stats, function(p) {
+    lapply(p, function(c) {
+      lapply(c, function(m) {
+        peds_subset <- 
+          m %>% 
+          filter(str_detect(cohort, regex("pediatric", ignore_case = TRUE)))
+        
+        n_distinct(peds_subset$ParticipantIdentifier, 
+                   peds_subset$date, 
+                   na.rm = T)
+      })
+    })
+  })
+
+
+median_days_peds <- 
+  lapply(summary_stats, function(p) {
+    lapply(p, function(c) {
+      lapply(c, function(m) {
+        m %>% 
+          filter(str_detect(cohort, regex("pediatric", ignore_case = TRUE))) %>% 
+          group_by(ParticipantIdentifier) %>% 
+          distinct(date) %>% 
+          count(date) %>% 
+          summarise(tot = sum(n)) %>% 
+          summarise(med = median(tot)) %>% 
+          as.numeric()
+      })
+    })
+  })
+
+distinct_dates_peds_df <- 
+  tibble::tibble(
+    Platform = rep(names(distinct_dates_peds), times = sapply(distinct_dates_peds, function(x) length(unlist(x)))),
+    Category = unlist(lapply(distinct_dates_peds, function(x) rep(names(x), each = length(unlist(x[[1]]))))),
+    Measure = unlist(lapply(distinct_dates_peds, function(x) unlist(lapply(x, names)))),
+    DateCount = unlist(distinct_dates_peds),
+    Median = unlist(median_days_peds)
+  )
+
+distinct_dates_peds_df %>% 
+  knitr::kable(format = "markdown", format.args = list(big.mark = ","))
+
+write.csv(distinct_dates_peds_df, "distinct_dates_peds_df.csv", row.names = F)
+```
+
+```{r, include=FALSE}
+synapser::File("distinct_dates_peds_df.csv", 
                description = "Count of unique dates of wearables data", 
                parent = "syn61671543") %>% 
   synapser::synStore()
