@@ -139,6 +139,8 @@ enrolledparticipants <-  arrow::open_dataset(s3_external$path(as.character(datas
 #   7. Number of Sleep Stages days
 #   8. Average Number of Sleep Stages days per participant
 #   9. Percentage of Sleep Stages days since enrollment
+#   10. Proportion of days with naps (given they had sleep data on a given day)
+#   11. Distribution of lengths of non-isMainSleep
 ##############
 ```
 
@@ -564,6 +566,66 @@ upset(as.data.frame(aa3),
 upset(as.data.frame(aa3),
       sets = c('otherData', 'fitbitsleeplogs_isMainSleep'),
       order.by = "freq", text.scale = 2)
+```
+
+
+## Naps Analyses
+
+`isMainSleep == False`
+
+### Percentage of Sleep Days with Naps Since Enrollment
+
+```{r}
+nap_days_since_enrollment <- 
+  fitbit_sleeplogs %>% 
+  filter(IsMainSleep == 'False') %>% 
+  left_join(
+    enrolledparticipants %>% 
+      select(ParticipantIdentifier, EnrollmentDate) %>% 
+      mutate(days_enrolled = lubridate::days(Sys.Date() - as.Date(EnrollmentDate))),
+    by = join_by(ParticipantIdentifier)
+  ) %>% 
+  filter(as.Date(StartDate) >= as.Date(EnrollmentDate)) %>%  # records after enrollment
+  mutate(dayOfRecording= as.Date(StartDate),
+                Duration = as.numeric(Duration)) %>% 
+  # filter(Duration >= 10.8e6) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  select(ParticipantIdentifier, dayOfRecording, days_enrolled, Type) %>%
+  unique() %>% 
+  group_by(ParticipantIdentifier, days_enrolled, Type) %>% 
+  count() %>%
+  ungroup() %>% 
+  rename(ndays_after_enrollment = n) %>% 
+  mutate(percentage_nap_days_post_enroll = 100*ndays_after_enrollment/lubridate::day(days_enrolled)) %>% 
+  ungroup()
+
+options(repr.plot.width = 8, repr.plot.height =6)
+ggplot2::ggplot(data = nap_days_since_enrollment, 
+                aes(x = percentage_nap_days_post_enroll)) + 
+  geom_histogram() + 
+  xlab('Percentage of Nap days Since enrollment') + 
+  ylab('Count') +
+  facet_wrap(~Type)+
+  theme_minimal()
+
+mean_percentage_nap_days_since_enrollment <- 
+  nap_days_since_enrollment %>% 
+  dplyr::group_by(Type) %>% 
+  dplyr::summarise(mean = round(mean(percentage_nap_days_post_enroll), 3),
+                   median = round(median(percentage_nap_days_post_enroll), 3))
+
+kable(mean_percentage_nap_days_since_enrollment)
+```
+
+### Average Number of Sleep Days with Naps Since Enrollment
+
+```{r}
+avg_number_of_nap_days_enrollment <- 
+  nap_days_since_enrollment %>% 
+  dplyr::group_by(Type) %>% 
+  dplyr::summarise(mean = round(mean(ndays_after_enrollment), 1),
+                   median = round(median(ndays_after_enrollment), 1))
+
+kable(avg_number_of_nap_days_enrollment)
 ```
 
 
