@@ -604,7 +604,7 @@ ggplot2::ggplot(data = nap_days_since_enrollment,
   geom_histogram(binwidth = 1) + 
   labs(x = "Percentage of Nap Days Since Enrollment",
        y = "Frequency")+
-  facet_wrap(~Type) +
+  facet_wrap("Type", dir = "v") +
   theme_minimal()
 
 mean_percentage_nap_days_since_enrollment <- 
