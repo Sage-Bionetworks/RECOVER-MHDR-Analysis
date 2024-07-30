@@ -650,11 +650,12 @@ nap_durations <-
 
 options(repr.plot.width = 8, repr.plot.height =6)
 
-ggplot(nap_durations, aes(x = Duration)) +
-  geom_histogram(binwidth = 10) +
+ggplot(nap_durations, aes(x = Duration, fill = Type)) +
+  geom_histogram(binwidth = 10, position = "dodge") +
   labs(x = "Nap Duration (minutes)", 
        y = "Frequency") +
-  facet_wrap(~Type) +
+  scale_fill_grey() +
+  scale_x_continuous(breaks = seq(0, max(nap_durations$Duration), 200)) +
   theme_minimal()
 
 ggplot(nap_durations, aes(x = Type, y = Duration)) +
