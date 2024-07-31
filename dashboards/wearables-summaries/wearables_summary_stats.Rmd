@@ -41,8 +41,8 @@ synapser::File("data_measures_df.csv",
 
 ## Total days of wearables data
 
-- `DateCount`: count of the number of distinct combinations of ParticipantIdentifier and Date
-- `Median`: median number of days of data per participant
+- `DateCount`: total number of distinct days of data per participant
+- `Median`: median number of distinct days of data per participant
 
 ```{r}
 distinct_dates <- 
@@ -90,6 +90,8 @@ synapser::File("distinct_dates_df.csv",
                description = "Count of unique dates of wearables data", 
                parent = "syn61671543") %>% 
   synapser::synStore()
+
+rm(distinct_dates, median_days, distinct_dates_df)
 ```
 
 ### Pediatric Cohort
@@ -218,7 +220,7 @@ this_file_path <- "dashboards/wearables-summaries/wearables_summary_stats.Rmd"
 
 latest_file_commit <- 
   gh::gh("/repos/:owner/:repo/commits", 
-         owner = "Sage-Bionetworks", 
+         owner = "pranavanba", 
          repo = "RECOVER-MHDR-Analysis", 
          path = this_file_path)[[1]]$commit$url %>% 
   {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
