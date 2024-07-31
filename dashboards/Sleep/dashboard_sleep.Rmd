@@ -230,7 +230,7 @@ number_of_sleep_days <- fitbit_sleeplogs %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(dayOfRecording= as.Date(StartDate),
                 Duration = as.numeric(Duration)) %>% 
-  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::filter(Duration >= 10.8e6) %>% # at least 3 hrs (10.8e6 ms) to be considered a sleep day/record
   dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, dayOfRecording, Type) %>%
   unique() 
@@ -264,7 +264,7 @@ number_of_sleep_days <- fitbit_sleeplogs %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(dayOfRecording= as.Date(StartDate),
                 Duration = as.numeric(Duration)) %>% 
-  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::filter(Duration >= 10.8e6) %>% # at least 3 hrs (10.8e6 ms) to be considered a sleep day/record
   dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, dayOfRecording, Type) %>%
   unique() 
@@ -298,7 +298,7 @@ avg_number_of_sleep_days <- fitbit_sleeplogs %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(dayOfRecording= as.Date(StartDate),
                 Duration = as.numeric(Duration)) %>% 
-  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::filter(Duration >= 10.8e6) %>% # at least 3 hrs (10.8e6 ms) to be considered a sleep day/record
   dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, dayOfRecording, Type) %>%
   unique() %>% 
@@ -323,7 +323,7 @@ avg_number_of_sleep_days <- fitbit_sleeplogs %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(dayOfRecording= as.Date(StartDate),
                 Duration = as.numeric(Duration)) %>% 
-  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::filter(Duration >= 10.8e6) %>% # at least 3 hrs (10.8e6 ms) to be considered a sleep day/record
   dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, dayOfRecording, Type) %>%
   unique() %>% 
@@ -350,7 +350,7 @@ sleep_days_since_enrollment <- fitbit_sleeplogs %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(dayOfRecording= as.Date(StartDate),
                 Duration = as.numeric(Duration)) %>% 
-  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::filter(Duration >= 10.8e6) %>% # at least 3 hrs (10.8e6 ms) to be considered a sleep day/record
   dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, dayOfRecording, days_enrolled, Type) %>%
   unique() %>% 
@@ -400,7 +400,7 @@ sleep_days_since_enrollment <- fitbit_sleeplogs %>%
   dplyr::rowwise() %>% 
   dplyr::mutate(dayOfRecording= as.Date(StartDate),
                 Duration = as.numeric(Duration)) %>% 
-  dplyr::filter(Duration >= 180) %>% # atleast 180min ie 3Hrs to be considered a sleep day/record
+  dplyr::filter(Duration >= 10.8e6) %>% # at least 3 hrs (10.8e6 ms) to be considered a sleep day/record
   dplyr::ungroup() %>% 
   dplyr::select(ParticipantIdentifier, dayOfRecording, days_enrolled, Type) %>%
   unique() %>% 
