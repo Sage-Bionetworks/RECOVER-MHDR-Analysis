@@ -96,7 +96,11 @@ reduced_datasets <-
       }) %>% 
       unique()
     
-    non_measure_cols <- c("ParticipantIdentifier", "StartDate", "EndDate", "Date")
+    non_measure_cols <- c("ParticipantIdentifier",
+                          "StartDate",
+                          "EndDate",
+                          "Date",
+                          "cohort")
     
     dataset <-
       datasets[[dataset]] %>% 
@@ -126,25 +130,27 @@ tmp_hr <-
   list(
     RestingHeartRate = 
       datasets_fitbit$fitbitdailydata %>% 
-      select(ParticipantIdentifier, Date, RestingHeartRate) %>% 
-      mutate(RestingHeartRate=as.numeric(RestingHeartRate)) %>% 
+      select(ParticipantIdentifier, Date, RestingHeartRate, cohort) %>% 
+      mutate(RestingHeartRate = as.numeric(RestingHeartRate)) %>% 
       filter(RestingHeartRate >= lower & RestingHeartRate <= upper) %>% 
       rename(Datetime = Date, 
              HeartRate = RestingHeartRate) %>% 
       collect() %>% 
       mutate(Datetime = lubridate::ymd_hms(Datetime)) %>% 
       distinct() %>% 
-      mutate(date = lubridate::date(Datetime)),
+      mutate(date = lubridate::date(Datetime),
+             cohort = str_remove(cohort, regex("_.*"))),
     AverageHeartRate = 
       datasets_fitbit$fitbitactivitylogs %>% 
-      select(ParticipantIdentifier, StartDate, AverageHeartRate) %>% 
+      select(ParticipantIdentifier, StartDate, AverageHeartRate, cohort) %>% 
       mutate(AverageHeartRate=as.numeric(AverageHeartRate)) %>% 
       filter(AverageHeartRate >= lower & AverageHeartRate <= upper) %>% 
       rename(HeartRate = AverageHeartRate) %>% 
       collect() %>% 
       mutate(StartDate = lubridate::ymd_hms(StartDate)) %>% 
       distinct() %>% 
-      mutate(date = lubridate::date(StartDate))
+      mutate(date = lubridate::date(StartDate),
+             cohort = str_remove(cohort, regex("_.*")))
   )
 
 ## Physical Activity
@@ -185,23 +191,25 @@ tmp_physact <-
     MinsActivity =
       datasets_fitbit$fitbitdailydata %>%
       select(-any_of(c("RestingHeartRate", "Steps"))) %>%
-      mutate(across(-c(ParticipantIdentifier, Date), as.numeric)) %>%
-      filter(across(-c(ParticipantIdentifier, Date), ~ . >= lower$minsactive & . <= upper$minsactive)) %>%
+      mutate(across(-c(ParticipantIdentifier, Date, cohort), as.numeric)) %>%
+      filter(across(-c(ParticipantIdentifier, Date, cohort), ~ . >= lower$minsactive & . <= upper$minsactive)) %>%
       rename(Datetime = Date) %>%
       collect() %>%
       mutate(Datetime = lubridate::ymd_hms(Datetime)) %>%
       distinct() %>%
-      mutate(date = lubridate::date(Datetime)),
+      mutate(date = lubridate::date(Datetime),
+             cohort = str_remove(cohort, regex("_.*"))),
     Steps =
       datasets_fitbit$fitbitdailydata %>%
-      select(ParticipantIdentifier, Date, Steps) %>%
-      mutate(across(-c(ParticipantIdentifier, Date), as.numeric)) %>%
+      select(ParticipantIdentifier, Date, Steps, cohort) %>%
+      mutate(Steps = as.numeric(Steps)) %>%
       filter(Steps >= lower$steps & Steps <= upper$steps) %>%
       rename(Datetime = Date) %>%
       collect() %>%
       mutate(Datetime = lubridate::ymd_hms(Datetime)) %>%
       distinct() %>%
-      mutate(date = lubridate::date(Datetime))
+      mutate(date = lubridate::date(Datetime),
+             cohort = str_remove(cohort, regex("_.*")))
   )
 
 ## Sleep
@@ -242,21 +250,23 @@ tmp_sleep <-
     Duration =
       datasets_fitbit$fitbitsleeplogs %>%
       select(-any_of(c("EndDate", "Efficiency"))) %>%
-      mutate(across(-c(ParticipantIdentifier, StartDate), as.numeric)) %>%
+      mutate(Duration = as.numeric(Duration)) %>%
       # filter(Duration >= lower$duration & Duration <= upper$duration) %>%
       collect() %>%
       mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
       distinct() %>%
-      mutate(date = lubridate::date(StartDate)),
+      mutate(date = lubridate::date(StartDate),
+             cohort = str_remove(cohort, regex("_.*"))),
     Efficiency =
       datasets_fitbit$fitbitsleeplogs %>%
       select(-any_of(c("EndDate", "Duration"))) %>%
-      mutate(across(-c(ParticipantIdentifier, StartDate), as.numeric)) %>%
+      mutate(Efficiency = as.numeric(Efficiency)) %>%
       # filter(Efficiency >= lower$efficiency & Efficiency <= upper$efficiency) %>%
       collect() %>%
       mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
       distinct() %>%
-      mutate(date = lubridate::date(StartDate))
+      mutate(date = lubridate::date(StartDate),
+             cohort = str_remove(cohort, regex("_.*")))
   )
 
 summary_stats <- 
@@ -302,7 +312,8 @@ tmp_hr <-
       collect() %>%
       mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
       distinct() %>%
-      mutate(date = lubridate::date(StartDate))
+      mutate(date = lubridate::date(StartDate),
+             cohort = str_remove(cohort, regex("_.*")))
   )
 
 ## Physical Activity
@@ -335,7 +346,8 @@ tmp_physact <-
       collect() %>%
       mutate(StartDate = lubridate::ymd_hms(StartDate)) %>%
       distinct() %>%
-      mutate(date = lubridate::date(StartDate))
+      mutate(date = lubridate::date(StartDate),
+             cohort = str_remove(cohort, regex("_.*")))
   )
 
 summary_stats$Healthkit <- 
