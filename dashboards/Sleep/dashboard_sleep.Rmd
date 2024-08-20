@@ -9,7 +9,7 @@ chunk_output_type: console
 library(synapser)
 library(knit2synapse)
 # devtools::install_github("jgockley62/knit2synapse")
-library(githubr)
+# library(githubr)
 # devtools::install_github("brian-bot/githubr")
 
 synapser::synLogin()
@@ -34,14 +34,14 @@ syn_temp$login() # is fails use syn_temp$login(authToken = <yourPAT>)
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-# knit2synapse:::createAndKnitToFolderEntityClient(file = "dashboard_sleep.Rmd",
-#                                                  parentId = "syn61348473",
-#                                                  folderName = 'Sleep')
-knit2synapse::knitfile2synapse(file = "dashboard_sleep.Rmd",
-                               owner = "syn51105296",
-                               parentWikiId = '627716',
-                               wikiName = 'Sleep',
-                               overwrite = TRUE)
+knit2synapse:::createAndKnitToFolderEntityClient(file = "dashboard_sleep.Rmd",
+                                                 parentId = "syn61348473",
+                                                 folderName = 'Sleep')
+# knit2synapse::knitfile2synapse(file = "dashboard_sleep.Rmd",
+#                                owner = "syn51105296",
+#                                parentWikiId = '627716',
+#                                wikiName = 'Sleep',
+#                                overwrite = TRUE)
 ```
 
 ```{r required libraries, include=FALSE, warning=FALSE, echo=FALSE, message=FALSE}
@@ -143,6 +143,8 @@ enrolledparticipants <-  arrow::open_dataset(s3_external$path(as.character(datas
 #   11. Distribution of lengths of non-isMainSleep
 ##############
 ```
+
+Using external datasets from archive version: `r ARCHIVE_VERSION`
 
 ### Number of records
 
@@ -569,16 +571,42 @@ upset(as.data.frame(aa3),
 ```
 
 
-## Naps Analyses
+## Naps Analyses (`isMainSleep == False`)
 
-`isMainSleep == False`
+### Number of Nappers vs Non-Nappers
+
+*Data is filtered to include only records where `StartDate >= EnrollmentDate`*
+
+```{r}
+nappers <- 
+  fitbit_sleeplogs %>% 
+    dplyr::left_join(
+        enrolledparticipants %>% 
+            dplyr::select(ParticipantIdentifier, EnrollmentDate) %>% 
+            dplyr::mutate(days_enrolled = lubridate::days(Sys.Date() - as.Date(EnrollmentDate))),
+        by = dplyr::join_by(ParticipantIdentifier)
+    ) %>% 
+    dplyr::filter(as.Date(StartDate) >= as.Date(EnrollmentDate)) %>% 
+  select(ParticipantIdentifier, IsMainSleep) %>% 
+  group_by(ParticipantIdentifier, IsMainSleep) %>% 
+  distinct() %>% 
+  group_by(IsMainSleep) %>% 
+  count() %>% 
+  ungroup() %>% 
+  mutate(napper = if_else(IsMainSleep=='False', TRUE, FALSE))
+
+nappers %>% 
+  select(napper, n) %>% 
+  knitr::kable()
+```
+
 
 ### Percentage of Sleep Days with Naps Since Enrollment
 
 ```{r}
 nap_days_since_enrollment <- 
   fitbit_sleeplogs %>% 
-  dplyr::filter(IsMainSleep == 'False') %>% 
+  dplyr::filter(IsMainSleep == 'False') %>%
   dplyr::left_join(
     enrolledparticipants %>% 
       dplyr::select(ParticipantIdentifier, EnrollmentDate) %>% 
@@ -699,6 +727,6 @@ knitr::kable(mean_nap_duration_since_enrollment)
 
 ```{r print provenance, echo=FALSE, results='asis'}
 # http_address <- glue::glue("{thisFile}")
-http_address <- 'https://github.com/itismeghasyam/RECOVER-MHDR-Analysis/blob/main/dashboards/Sleep/dashboard_sleep.Rmd'
+http_address <- 'https://github.com/Sage-Bionetworks/RECOVER-MHDR-Analysis/blob/main/dashboards/Sleep/dashboard_sleep.Rmd'
 cat("[GitHub Code](", http_address, ")")
 ```
