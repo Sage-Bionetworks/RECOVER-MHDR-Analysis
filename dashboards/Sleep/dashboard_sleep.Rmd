@@ -593,9 +593,9 @@ nappers <-
   dplyr::filter(as.Date(StartDate) >= as.Date(EnrollmentDate)) %>% 
   select(ParticipantIdentifier, IsMainSleep) %>% 
   group_by(ParticipantIdentifier) %>%
-  summarize(status = case_when(all(IsMainSleep == 'True') ~ 'only_sleep_records',
-                               all(IsMainSleep=='False') ~ 'only_nap_records',
-                               any(IsMainSleep=='True') ~ 'atleast_1_nap_and_sleep')) %>% 
+  summarize(status = case_when(all(IsMainSleep == 'True') ~ 'onlySleep',
+                               all(IsMainSleep=='False') ~ 'onlyNap',
+                               any(IsMainSleep=='True') ~ 'atleast1NapAndSleep')) %>% 
   group_by(status) %>%
   summarize(count = n_distinct(ParticipantIdentifier))
 
