@@ -16,27 +16,32 @@ pivot_files = [file.resolve() for file in pivot_d.iterdir() if file.is_file() an
 missratio_h_files = [file.resolve() for file in array_d.iterdir() if file.is_file() and file.suffix == '.npy']
 # Load the data
 # %%
-miss_ratio_h = np.load(missratio_h_files[0], allow_pickle=True)
-pivot_table = pd.read_csv(pivot_files[0], index_col=0)
+id = 26
+miss_ratio_h = np.load(missratio_h_files[id], allow_pickle=True)
+pivot_table = pd.read_csv(pivot_files[id], index_col=0)
 subject_id = pivot_files[0].stem
 
-# %%
 step = 4
+# %% Smooth the pivot table
+pivot_table['group'] = np.repeat(np.arange(0, len(pivot_table) // step), step)
+pivot_table_gb = pivot_table.groupby('group').mean()
+
+# %%
 
 time_series = pivot_table.index.values
 reduced_time_series = time_series[::step]
 
 # Plot the pivot table using pcolormesh
 plt.figure(figsize=(10, 6))
-plt.pcolormesh(pivot_table.T, shading='auto', cmap='Blues_r')
-plt.colorbar(label='Miss Ratio')
+plt.pcolormesh(pivot_table_gb.T.to_numpy(), shading='auto', cmap='Blues_r')
+plt.colorbar(label='Missingness Ratio')
 
 # Set the ticks for x and y axis
-plt.xticks(ticks=np.arange(0, len(pivot_table.index), step), labels=reduced_time_series, rotation=90)
-plt.yticks(ticks=np.arange(0, len(pivot_table.columns)), labels=pivot_table.columns)
+plt.yticks(ticks=np.arange(0, len(pivot_table_gb.columns)), labels=pivot_table_gb.columns)
+# plt.yticks(ticks=np.arange(0, len(pivot_table.columns)), labels=pivot_table.columns)
 
-plt.title('Missingness by 15-Minute Chunks and Weekday ' + subject_id)
-plt.xlabel('15-Minute Chunks')
+plt.title('Missingness by 1 hour Chunks and Weekday ')
+plt.xlabel('1-Hour Chunks')
 plt.ylabel('Weekday')
 plt.show()
 
@@ -50,7 +55,7 @@ reduced_time_series = time_series[::step]
 plt.figure(figsize=(10, 2))
 plt.pcolormesh(array_2d, shading='auto', cmap='Blues_r')
 plt.colorbar(label='Missingness')
-plt.title('Missingness during a day' + subject_id)
+plt.title('Missingness during a day ' + str(id))
 plt.xlabel('Time Intervals')
 plt.xticks(ticks=np.arange(0, len(time_series), step), labels=reduced_time_series, rotation=90)
 plt.yticks([])
