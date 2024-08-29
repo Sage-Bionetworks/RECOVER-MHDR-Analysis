@@ -65,6 +65,7 @@ plt.xlabel('Time Range')
 
 # %%
 # Smooth across one hour
+cluster_random_state = 42
 mt = combined_matrix.copy()
 mt = mt.reshape(mt.shape[0], mt.shape[1] // 4, 4).astype(float)
 mt = mt.mean(axis=2)
@@ -74,7 +75,7 @@ df = pd.DataFrame(mt, index=file_names, columns=range(mt.shape[1]))
 wcss = []
 K = range(1, 15)
 for k in K:
-    kmeans = KMeans(n_clusters=k, random_state=42)
+    kmeans = KMeans(n_clusters=k, random_state=cluster_random_state)
     kmeans.fit(df)
     wcss.append(kmeans.inertia_)
 
@@ -90,7 +91,7 @@ plt.show()
 optimal_k = 6
 
 # Fit KMeans with the optimal number of clusters
-kmeans = KMeans(n_clusters=optimal_k, random_state=3)
+kmeans = KMeans(n_clusters=optimal_k, random_state=cluster_random_state)
 kmeans.fit(df)
 clusters = kmeans.labels_
 
@@ -105,10 +106,14 @@ plt.figure(figsize=(12, 8))
 plt.pcolormesh(df.to_numpy(), cmap='Blues_r')
 plt.ylabel('Person ID')
 plt.xticks(np.arange(0, df.shape[1], 1), [t.strftime('%H:%M') for t in time_chunk_1hour[np.arange(0, df.shape[1], 1)]], rotation=90)
-plt.colorbar(label='Average missingness across every day within 6 months')
-plt.xlabel('Time Range')
-plt.title('Heatmap of Average Missingness')
+plt.colorbar(label='Average missingness across every day')
+plt.xlabel('Hour of Day')
+plt.tight_layout()
+plt.savefig('figures/clu_hour_average_all.jpg', dpi=600)
 plt.show()
 
 
+# %%
+import numpy as np
+xx = np.load("ID.npy", allow_pickle=True)
 # %%
