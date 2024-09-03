@@ -69,25 +69,27 @@ valid_paths_ext_df['datasetType'] = valid_paths_ext_df['parquet_path_external'].
 ## Each chunk contains all data for a select set of participants
 ##############
 subset_paths_df = valid_paths_ext_df[valid_paths_ext_df['datasetType'] == 'dataset_fitbitsleeplogs_sleeplogdetails'].reset_index()
-
+sleeplogs_df_path = valid_paths_ext_df[valid_paths_ext_df['datasetType'] == 'dataset_fitbitsleeplogs'].reset_index()
 participant_counts = defaultdict(int)
 
 # get dataset path
 path = subset_paths_df['parquet_path_external'][0]
+path_sleeplogs = sleeplogs_df_path['parquet_path_external'][0]
 
 # dataset at cohort level (eg. fitbitintradaycombined/adults/)
 dataset_cohort = ds.dataset(path, filesystem=s3_external)
+sleeplogs_dataset_cohort = ds.dataset(path_sleeplogs, filesystem=s3_external)
 
 # Required list of participants 
 ## list of required participants; just make sure that all of them are in one cohort as initially we are considering
 ## the dataset at cohort level
 # a few adult participants, some participant can have multiple parquet files associated with them
-participant_list = ['RA11001-00056']
+participant_list = ['RA11001-00056', 'RA11001-00033', 'RA11001-00041', 'RA11001-00060']
 
 df_lat = pd.DataFrame(columns=['participantidentifier', 'remonsetlatency'])
 df_rfi = pd.DataFrame(columns=['participantidentifier', 'remfragmentationindex'])
 
-for i, subject_id in enumerate(lat_id):
+for i, subject_id in enumerate(lat_id[0:100]):
     if i%10 == 0:
         print("test" + str(subject_id) + " " + str(i))
     else:
@@ -97,15 +99,17 @@ for i, subject_id in enumerate(lat_id):
     dataset = ds.dataset(matching_files, filesystem=s3_external, format='parquet')
 
     intra_slogdetails = dataset.to_table().to_pandas()
-    intra_slogdetails = intra_slogdetails[intra_slogdetails['Type'] != "ShortSleepLevel"]
+    # intra_slogdetails = intra_slogdetails[intra_slogdetails['Type'] != "ShortSleepLevel"]
 
     # Validate REM Onset latency
     intra_slogdetails['Date'] = pd.to_datetime(intra_slogdetails['StartDate']).dt.date
 
     # Function to calculate the time difference between the first non-wake and first REM StartDate
     def calculate_time_difference(group):
+        group = group.sort_values(by='StartDate', ascending=True).reset_index(drop=True)
         # Find the first non-wake StartDate
-        non_wake_start = group.loc[group['Value'] != 'wake', 'StartDate'].min()
+        # non_wake_start = group.loc[group['Value'] != 'wake', 'StartDate'].min()
+        non_wake_start = group.loc[~group['Value'].isin(['wake', 'awake']), 'StartDate'].min()
         
         # Find the first REM StartDate
         rem_start = group.loc[group['Value'] == 'rem', 'StartDate'].min()
@@ -117,24 +121,28 @@ for i, subject_id in enumerate(lat_id):
             return pd.NaT  # Return NaT if either is not found
 
     # Group by Date and calculate the time difference for each date
-    time_differences = intra_slogdetails.groupby('Date').apply(calculate_time_difference).dropna()
+    time_differences = intra_slogdetails.groupby(['LogId', 'id']).apply(calculate_time_difference).dropna()
     result = time_differences.mean().total_seconds()
     df_lat.loc[len(df_lat)] = [subject_id, result]
 
 # %%
-for i, subject_id in enumerate(rfi_id):
+for i, subject_id in enumerate(rfi_id[0:100]):
     if i%10 == 0:
         print("test" + str(subject_id) + " " + str(i))
     else:
         print("test" + str(subject_id))
     # Find all file names containing the subject ID
     matching_files = [file for file in dataset_cohort.files if subject_id in file]
+    matching_files_sleeplogs = [file for file in sleeplogs_dataset_cohort.files if subject_id in file]
     dataset = ds.dataset(matching_files, filesystem=s3_external, format='parquet')
+    dataset_sleeplogs = ds.dataset(matching_files_sleeplogs, filesystem=s3_external, format='parquet')
 
     intra_slogdetails = dataset.to_table().to_pandas()
-    intra_slogdetails = intra_slogdetails[intra_slogdetails['Type'] != "ShortSleepLevel"]
-    rem_slogdetails = intra_slogdetails[intra_slogdetails['Value'] == 'rem']
-    rem_slogdetails.sort_values(by='StartDate').reset_index(drop=True)
+    intra_sleeplogs = dataset_sleeplogs.to_table().to_pandas()
+    intra_sleeplogs['SleepLevelRem'] = intra_sleeplogs['SleepLevelRem'].astype('float')
+    # intra_slogdetails = intra_slogdetails[intra_slogdetails['Type'] != "ShortSleepLevel"]
+    # rem_slogdetails = intra_slogdetails[intra_slogdetails['Value'] == 'rem']
+    # rem_slogdetails.sort_values(by='StartDate').reset_index(drop=True)
 
     # Convert StartDate and EndDate to datetime
 
@@ -146,22 +154,43 @@ for i, subject_id in enumerate(rfi_id):
     intra_slogdetails['Date'] = intra_slogdetails['StartDate'].dt.date
 
     # Calculate the duration for each row in hours
-    intra_slogdetails['Duration'] = (intra_slogdetails['EndDate'] - intra_slogdetails['StartDate']).dt.total_seconds() / 3600
+    # intra_slogdetails['Duration'] = (intra_slogdetails['EndDate'] - intra_slogdetails['StartDate']).dt.total_seconds() / 3600
+    
+    intra_slogdetails['PrevValue'] = intra_slogdetails['Value'].shift(1)
+    rem_transitions = intra_slogdetails[(intra_slogdetails['PrevValue'] == 'rem') & (intra_slogdetails['Value'] != 'rem')]
+    
+    rem_transition_counts = rem_transitions.groupby(['ParticipantIdentifier', 'LogId', 'id']).size().reset_index(name='remTransitions')
+    
+    # total_rem_duration = intra_slogdetails[intra_slogdetails['Value'] == 'rem'].groupby(['ParticipantIdentifier', 'LogId', 'id'])['Duration'].sum().reset_index(name='TotalRemDuration')
 
-    # Filter the DataFrame for REM stages only
-    rem_data = intra_slogdetails[intra_slogdetails['Value'] == 'rem']
+    # Merge the transitions and duration data
+    # merged_data = pd.merge(rem_transition_counts, total_rem_duration, on=['ParticipantIdentifier', 'LogId', 'id'], how='left')
+    merged_data = pd.merge(rem_transition_counts, intra_sleeplogs[['ParticipantIdentifier', 'LogId', 'SleepLevelRem']], on=['ParticipantIdentifier', 'LogId'], how='left')
 
-    # Group by Date and calculate the total REM sleep time
-    total_rem_sleep_time = rem_data.groupby('Date')['Duration'].sum()
+    merged_data = merged_data[merged_data['SleepLevelRem'] > 0]
 
-    # Count the number of REM stages for each date
-    rem_counts = rem_data.groupby('Date').size()
+    merged_data['remFragmentationIndex'] = merged_data['remTransitions'] / (merged_data['SleepLevelRem']/60)
+    
+    # Compare both methods
+    result = merged_data['remFragmentationIndex'].mean()
+    result = merged_data['remTransitions'].sum()/(merged_data['SleepLevelRem'].sum()/60)
 
-    # Calculate the ratio of REM stages to total REM sleep time
-    rem_sleep_ratio = rem_counts / total_rem_sleep_time
-
-    # Display the results
-    rem_sleep_ratio = rem_sleep_ratio.dropna()
-    df_rfi = df_rfi.append({'participantidentifier': subject_id, 'remonsetlatency': rem_sleep_ratio}, ignore_index=True)
+    # # Filter the DataFrame for REM stages only
+    # rem_data = intra_slogdetails[intra_slogdetails['Value'] == 'rem']
+    # 
+    # # Group by Date and calculate the total REM sleep time
+    # total_rem_sleep_time = rem_data.groupby(['LogId', 'id'])['Duration'].sum()
+    # 
+    # # Count the number of REM stages for each date
+    # rem_counts = rem_data.groupby('Date').size()
+    # 
+    # # Calculate the ratio of REM stages to total REM sleep time
+    # rem_sleep_ratio = rem_counts / total_rem_sleep_time
+    # 
+    # # Display the results
+    # rem_sleep_ratio = rem_sleep_ratio.dropna()
+    # df_rfi = pd.append({'participantidentifier': subject_id, 'remonsetlatency': rem_sleep_ratio}, ignore_index=True)
+    
+    df_rfi.loc[len(df_rfi)] = [subject_id, result]
 
 # %%
