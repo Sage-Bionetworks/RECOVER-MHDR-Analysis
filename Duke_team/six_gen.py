@@ -35,7 +35,7 @@ COHORT = 'adults'
 #### archived versions of the external parquet dataset (syn52506069)
 ########
 ## Set up Token access
-sts_token = syn.get_sts_storage_token(entity='syn54128737', permission='read_only', output_format='json')
+sts_token = syn.get_sts_storage_token(entity='syn52935439', permission='read_only', output_format='json')
 
 s3_external = fs.S3FileSystem(
     access_key=sts_token['accessKeyId'],
@@ -45,7 +45,7 @@ s3_external = fs.S3FileSystem(
 )
 
 ## Get list of datasets in the S3 bucket
-base_s3_uri_external = f"{sts_token['bucket']}/{sts_token['baseKey']}/{ARCHIVE_VERSION}/{COHORT}"
+base_s3_uri_external = f"{sts_token['bucket']}/{sts_token['baseKey']}/{ARCHIVE_VERSION}"
 selector = fs.FileSelector(base_s3_uri_external, recursive=False)
 parquet_datasets_external = s3_external.get_file_info(selector)
 
@@ -53,20 +53,20 @@ parquet_datasets_external = s3_external.get_file_info(selector)
 valid_paths = []
 i = 0
 for dataset in parquet_datasets_external:
-    if re.search(r'recover-velsera-integration/main/archive/', dataset.path, re.IGNORECASE):
+    if re.search(r'recover-main-project/main/archive/', dataset.path, re.IGNORECASE):
         i += 1
         print(f"{i}: {dataset.path}")
         valid_paths.append(dataset.path)
 
 ## Get dataset type (for eg., dataset_enrolledparticipants)
 valid_paths_ext_df = pd.DataFrame(valid_paths, columns=['parquet_path_external'])
-valid_paths_ext_df['datasetType'] = valid_paths_ext_df['parquet_path_external'].apply(lambda x: x.split('/')[5])
+valid_paths_ext_df['datasetType'] = valid_paths_ext_df['parquet_path_external'].apply(lambda x: x.split('/')[4])
 
 ##############
 ## Read Fitbit Intraday in chunks.
 ## Each chunk contains all data for a select set of participants
 ##############
-subset_paths_df = valid_paths_ext_df[valid_paths_ext_df['datasetType'] == 'dataset_fitbitintradaycombined'].reset_index()
+subset_paths_df = valid_paths_ext_df[valid_paths_ext_df['datasetType'] == 'dataset_fitbitsleeplogs_sleeplogdetails'].reset_index()
 
 participant_counts = defaultdict(int)
 
@@ -82,4 +82,28 @@ dataset_cohort = ds.dataset(path, filesystem=s3_external)
 # a few adult participants, some participant can have multiple parquet files associated with them
 participant_list = ['RA11003-00024']
 unique_subject_id = list(set(file_name.split('/')[6] for file_name in dataset_cohort.files))
+# %%
+vars = [
+    "ParticipantIdentifier", 
+    "DateTime", 
+    "DeepSleepSummaryBreathRate",
+    "RemSleepSummaryBreathRate",
+    "FullSleepSummaryBreathRate",
+    "LightSleepSummaryBreathRate"
+]
+
+# Load only a subset of the columns from the dataset
+dataset = ds.dataset(dataset_cohort.files[0], filesystem=s3_external)
+
+# Convert the dataset to a pandas DataFrame and apply transformations
+df = (
+    dataset.to_table(columns=vars)
+    .to_pandas()
+    .astype({
+        'DeepSleepSummaryBreathRate': 'float64',
+        'RemSleepSummaryBreathRate': 'float64',
+        'FullSleepSummaryBreathRate': 'float64',
+        'LightSleepSummaryBreathRate': 'float64'
+    })
+)
 # %%
