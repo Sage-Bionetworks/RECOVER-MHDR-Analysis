@@ -58,13 +58,28 @@ plt.ylabel('Person ID')
 plt.xticks(np.arange(0, 16692, 600), time_range_15min[np.arange(0, 16692, 600)], rotation=90)
 plt.xlabel('Time Range')
 # %%
+cluster_random_state = 5
 mt = combined_matrix.copy()
 mt = mt.reshape(mt.shape[0], mt.shape[1] // 96, 96).astype(int)
 mt = mt.sum(axis=2)
 df = pd.DataFrame(mt, index=file_names, columns=range(mt.shape[1]))
 
+wcss = []
+K = range(1, 15)
+for k in K:
+    kmeans = KMeans(n_clusters=k, random_state=cluster_random_state)
+    kmeans.fit(df)
+    wcss.append(kmeans.inertia_)
+
+# Plot the WCSS to find the elbow
+plt.figure(figsize=(10, 6))
+plt.plot(K, wcss, 'bo-')
+plt.xlabel('Number of Clusters')
+plt.ylabel('Within-Cluster Sum of Squares (WCSS)')
+plt.title('Elbow Method for Optimal Number of Clusters')
+plt.show()
 # %%
-kmeans = KMeans(n_clusters=5)
+kmeans = KMeans(n_clusters=5, random_state=cluster_random_state)
 kmeans.fit(combined_matrix)
 clusters = kmeans.labels_
 
@@ -76,7 +91,9 @@ time_chunk_1day = pd.date_range(start=pd.Timestamp('2023-09-01'), end=pd.Timesta
 # %%
 plt.pcolormesh(df.to_numpy() / 96, cmap='Blues_r')
 plt.ylabel('Person ID')
-plt.xticks(np.arange(0, df.shape[1], 15), time_chunk_1day[np.arange(0, df.shape[1], 15)], rotation=90)
+plt.xticks(np.arange(0, df.shape[1], 15), time_chunk_1day[np.arange(0, df.shape[1], 15)].astype(str), rotation=90)
 plt.colorbar(label='Average missingness across every day within 6 months')
+plt.tight_layout()
+plt.savefig('figures/clu_6m_single.jpg', dpi=600)
 plt.xlabel('Time Range')
 # %%

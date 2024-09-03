@@ -3,3 +3,4 @@ core.*
 Duke_team/core.*
 dashboards/**/*.csv
 dashboards/**/*cache*
+Duke_team/sleep_validate/*.csv

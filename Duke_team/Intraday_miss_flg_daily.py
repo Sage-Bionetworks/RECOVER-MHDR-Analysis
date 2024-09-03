@@ -17,6 +17,7 @@ import numpy as np
 from data_utils import *
 import matplotlib.pyplot as plt
 import time
+from constant import *
 
 ########
 # Set up Access and download dataset
@@ -93,6 +94,7 @@ weekdays_order = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Satur
 MAX_Size = 1000000
 start_time = START_TIME 
 end_time = END_TIME
+# %%
 unique_id_S2C5 = unique_id_S2C5_full[100:]
 for i, subject_id in enumerate(unique_id_S2C5):
     if i%10 == 0:
@@ -156,6 +158,25 @@ for i, subject_id in enumerate(unique_id_S2C5):
 
     # # Save the array to a file
     # np.save('./missratio_h/' + subject_id + '.npy', array)
+
+# %%
+unique_date = []
+unique_id_S2C5 = unique_id_S2C5_full[0:100]
+for i, subject_id in enumerate(unique_id_S2C5):
+    if i%10 == 0:
+        print("test" + str(subject_id) + " " + str(i))
+    print("test" + str(subject_id))
+    # Find all file names containing the subject ID
+    matching_files = [file for file in dataset_cohort.files if subject_id in file]
+    dataset = ds.dataset(matching_files, filesystem=s3_external, format='parquet')
+
+    intra_comb = dataset.to_table().to_pandas()
+    intra_hr = intra_comb[intra_comb['Type']=='activities-heart']
+    del intra_comb
+    intra_hr['DateTime'] = pd.to_datetime(intra_hr.loc[:, 'DateTime'])
+    # intra_hr = intra_hr[(intra_hr['DateTime'] >= start_time) & (intra_hr['DateTime'] < end_time)]
+    intra_hr = intra_hr.loc[:,['ParticipantIdentifier', 'DateTime', 'Value']]
+    unique_date.append(len(np.unique(intra_hr['DateTime'].dt.date.values)))
 
 
 # %%
