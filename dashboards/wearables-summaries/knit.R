@@ -5,7 +5,7 @@ syn_temp <- synapseclient$Synapse()
 syn_temp$login(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 synapser::synLogin()
 
-DASHBOARD_PARENT_FOLDER_SYNID <- "syn55257353"
+DASHBOARD_PARENT_FOLDER_SYNID <- "syn63181262"
 FOLDER_NAME <- "Wearables Summary Stats"
 
 knit2synapse:::createAndKnitToFolderEntityClient(

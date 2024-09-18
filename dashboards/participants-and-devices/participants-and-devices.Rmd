@@ -28,10 +28,10 @@ library(synapser)
 library(knit2synapse)
 library(ggpubr)
 
-ARCHIVE_VERSION <- "2024-06-13"
+ARCHIVE_VERSION <- "2024-09-10"
 
 if (!(ARCHIVE_VERSION %in% list.dirs("./dashboards/participants-and-devices/rendered-dfs/"))) {
-  dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"))
+  dir.create(glue::glue("./dashboards/participants-and-devices/rendered-dfs/{ARCHIVE_VERSION}/"), recursive = T)
 }
 ```
 
@@ -43,7 +43,7 @@ synLogin(authToken = Sys.getenv("SYNAPSE_AUTH_TOKEN"))
 
 sts_token <- 
   synapser::synGetStsStorageToken(
-    entity = 'syn52506069',
+    entity = 'syn52912560',#'syn52506069',
     permission = 'read_only',
     output_format = 'json')
 
@@ -998,12 +998,14 @@ write.csv(curr_state,
 
 this_file_path <- "dashboards/participants-and-devices/participants-and-devices.Rmd"
 
-latest_file_commit <- 
-  gh::gh("/repos/:owner/:repo/commits", 
-         owner = "Sage-Bionetworks", 
-         repo = "RECOVER-MHDR-Analysis", 
-         path = this_file_path)[[1]]$commit$url %>% 
-  {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+# latest_file_commit <- 
+#   gh::gh("/repos/:owner/:repo/commits", 
+#          owner = "Sage-Bionetworks", 
+#          repo = "RECOVER-MHDR-Analysis", 
+#          path = this_file_path)[[1]]$commit$url %>% 
+#   {gsub("https://api.github.com/repos/", "https://github.com/", .)} %>% {gsub("/git/commits/", "/blob/", .)} %>% glue::glue("/{this_file_path}")
+
+latest_file_commit <- "https://github.com/Sage-Bionetworks/RECOVER-MHDR-Analysis/blob/main/dashboards/participants-and-devices/participants-and-devices.Rmd"
 
 cat("[GitHub Code](", latest_file_commit, ")")
 ```

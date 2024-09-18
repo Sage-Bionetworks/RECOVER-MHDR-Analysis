@@ -4,7 +4,7 @@ synapser::synLogin()
 # Get a storage token
 sts_token <- 
   synapser::synGetStsStorageToken(
-    entity = 'syn52506069',
+    entity = 'syn52912560',#'syn52506069',
     permission = 'read_only',
     output_format = 'json'
   )
