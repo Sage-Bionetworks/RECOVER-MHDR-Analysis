@@ -7,7 +7,7 @@ synapser::synLogin()
 
 ### Please install v1.28 of reticulate, as this is the needed version for synapser
 ### devtools::install_version("reticulate", version = "1.28", repos = "http://cran.us.r-project.org")
-DASHBOARD_FOLDER_SYNID <- "syn61348473"
+DASHBOARD_FOLDER_SYNID <- "syn63181262"
 FOLDER_NAME <- "Fitbit DailyData Metrics"
 
 knit2synapse:::createAndKnitToFolderEntityClient(
@@ -22,7 +22,7 @@ tictoc::tic("INFO: Fitbit DailyData Metrics markdown knit to project wiki")
 knit2synapse::knitfile2synapse(
   file = "dashboards/fitbit-dailydata-metrics/fitbit-dailydata-metrics.Rmd",
   owner = "syn51105296",
-  parentWikiId = '628496',
+  parentWikiId = '628774',
   wikiName = FOLDER_NAME,
   overwrite = TRUE)
 
